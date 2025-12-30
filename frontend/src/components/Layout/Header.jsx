@@ -1,0 +1,67 @@
+import React, { useState } from 'react';
+import { Menu, X, ShoppingBag } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+
+const Header = () => {
+    const [isOpen, setIsOpen] = useState(false);
+    const location = useLocation();
+    const { t } = useTranslation();
+
+    const isActive = (path) => location.pathname === path ? "text-brand-maroon font-bold" : "";
+
+    return (
+        <header className="bg-brand-ivory/90 backdrop-blur-md shadow-md sticky top-0 z-50 border-b border-brand-gold/20">
+            <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+                {/* Logo */}
+                <Link to="/" className="text-2xl font-serif font-bold text-brand-maroon tracking-wide flex items-center gap-2">
+                    {t('brand.name')} <span className="text-brand-gold">{t('brand.suffix')}</span>
+                </Link>
+
+                {/* Desktop Nav */}
+                <nav className="hidden md:flex space-x-8 font-medium text-brand-charcoal">
+                    <Link to="/" className={`hover:text-brand-maroon transition duration-300 ${isActive('/')}`}>{t('nav.home')}</Link>
+                    <Link to="/designs" className={`hover:text-brand-maroon transition duration-300 ${isActive('/designs')}`}>{t('nav.designs')}</Link>
+                    <Link to="/gallery" className={`hover:text-brand-maroon transition duration-300 ${isActive('/gallery')}`}>{t('nav.gallery')}</Link>
+                    <Link to="/about" className={`hover:text-brand-maroon transition duration-300 ${isActive('/about')}`}>{t('nav.about')}</Link>
+                    <Link to="/faq" className={`hover:text-brand-maroon transition duration-300 ${isActive('/faq')}`}>{t('nav.faq')}</Link>
+                    <Link to="/contact" className={`hover:text-brand-maroon transition duration-300 ${isActive('/contact')}`}>{t('nav.contact')}</Link>
+                </nav>
+
+                {/* User Actions */}
+                <div className="hidden md:flex items-center space-x-4">
+                    <Link to="/login" className="text-sm font-medium text-brand-teal hover:text-brand-maroon transition">
+                        {t('nav.login')}
+                    </Link>
+                    <Link to="/contact" className="bg-brand-teal text-white px-6 py-2 rounded-xl hover:bg-teal-700 transition shadow-lg font-medium tracking-wide">
+                        {t('nav.bookAppointment')}
+                    </Link>
+                </div>
+
+                {/* Mobile Menu Button */}
+                <button className="md:hidden text-brand-maroon" onClick={() => setIsOpen(!isOpen)} aria-label="Toggle Menu">
+                    {isOpen ? <X size={28} /> : <Menu size={28} />}
+                </button>
+            </div>
+
+            {/* Mobile Nav */}
+            {isOpen && (
+                <div className="md:hidden bg-brand-ivory border-t border-gray-100 py-4 absolute w-full shadow-xl">
+                    <div className="flex flex-col space-y-4 px-4 text-center">
+                        <Link to="/" className="text-brand-charcoal hover:text-brand-maroon" onClick={() => setIsOpen(false)}>{t('nav.home')}</Link>
+                        <Link to="/designs" className="text-brand-charcoal hover:text-brand-maroon" onClick={() => setIsOpen(false)}>{t('nav.designs')}</Link>
+                        <Link to="/gallery" className="text-brand-charcoal hover:text-brand-maroon" onClick={() => setIsOpen(false)}>{t('nav.gallery')}</Link>
+                        <Link to="/about" className="text-brand-charcoal hover:text-brand-maroon" onClick={() => setIsOpen(false)}>{t('nav.about')}</Link>
+                        <Link to="/contact" className="text-brand-charcoal hover:text-brand-maroon" onClick={() => setIsOpen(false)}>{t('nav.contact')}</Link>
+                        <Link to="/login" className="text-brand-teal font-medium" onClick={() => setIsOpen(false)}>{t('nav.login')}</Link>
+                        <Link to="/contact" className="bg-brand-teal text-white px-5 py-2 rounded-xl w-full inline-block" onClick={() => setIsOpen(false)}>
+                            {t('nav.bookAppointment')}
+                        </Link>
+                    </div>
+                </div>
+            )}
+        </header>
+    );
+};
+
+export default Header;

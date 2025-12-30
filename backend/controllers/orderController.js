@@ -1,0 +1,84 @@
+const Order = require('../models/Order');
+const Product = require('../models/Product');
+
+// @desc    Create new order
+// @route   POST /api/orders
+// @access  Private
+exports.createOrder = async (req, res) => {
+    try {
+        const {
+            orderItems,
+            deliveryAddress,
+            measurementProfileId,
+            totalAmount,
+            specialNotes,
+        } = req.body;
+
+        if (orderItems && orderItems.length === 0) {
+            return res.status(400).json({ message: 'No order items' });
+        }
+
+        // Generate Order Number
+        const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+        const order = new Order({
+            orderNumber,
+            customer: req.user.id,
+            orderItems,
+            totalAmount,
+            deliveryAddress,
+            measurementProfile: measurementProfileId,
+            specialNotes,
+            statusTimeline: [{
+                status: 'pending',
+                notes: 'Order placed by customer',
+                changedAt: Date.now()
+            }]
+        });
+
+        const createdOrder = await order.save();
+        res.status(201).json(createdOrder);
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+// @desc    Get logged in user orders
+// @route   GET /api/orders/myorders
+// @access  Private
+exports.getMyOrders = async (req, res) => {
+    try {
+        const orders = await Order.find({ customer: req.user.id }).sort({ createdAt: -1 });
+        res.json(orders);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+// @desc    Get order by ID
+// @route   GET /api/orders/:id
+// @access  Private
+exports.getOrderById = async (req, res) => {
+    try {
+        const order = await Order.findById(req.params.id)
+            .populate('customer', 'firstName lastName email')
+            .populate('orderItems.product')
+            .populate('measurementProfile');
+
+        if (order) {
+            // Check if user is owner or admin
+            if (order.customer._id.toString() !== req.user.id && req.user.role !== 'admin') {
+                return res.status(401).json({ message: 'Not authorized to view this order' });
+            }
+            res.json(order);
+        } else {
+            res.status(404).json({ message: 'Order not found' });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
