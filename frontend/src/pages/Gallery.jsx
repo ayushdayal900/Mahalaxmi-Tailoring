@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
-import { Loader } from 'lucide-react';
+import { Loader, X, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const Gallery = () => {
     const [filter, setFilter] = useState('All');
     const [galleryItems, setGalleryItems] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [selectedImageIndex, setSelectedImageIndex] = useState(null);
 
     useEffect(() => {
         const fetchGallery = async () => {
@@ -21,10 +22,32 @@ const Gallery = () => {
         fetchGallery();
     }, []);
 
+    // Keyboard Navigation
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (selectedImageIndex === null) return;
+            if (e.key === 'ArrowRight') handleNext();
+            if (e.key === 'ArrowLeft') handlePrev();
+            if (e.key === 'Escape') setSelectedImageIndex(null);
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [selectedImageIndex]);
+
     // Get unique categories from items
     const categories = ['All', ...new Set(galleryItems.map(item => item.category).filter(Boolean))];
 
     const filteredItems = filter === 'All' ? galleryItems : galleryItems.filter(item => item.category === filter);
+
+    const handleNext = (e) => {
+        e?.stopPropagation();
+        setSelectedImageIndex((prev) => (prev + 1) % filteredItems.length);
+    };
+
+    const handlePrev = (e) => {
+        e?.stopPropagation();
+        setSelectedImageIndex((prev) => (prev - 1 + filteredItems.length) % filteredItems.length);
+    };
 
     if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><Loader className="animate-spin text-brand-maroon" size={40} /></div>;
 
@@ -61,8 +84,12 @@ const Gallery = () => {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {filteredItems.map(item => (
-                            <div key={item._id} className="group relative overflow-hidden rounded-xl shadow-md cursor-pointer h-80">
+                        {filteredItems.map((item, index) => (
+                            <div
+                                key={item._id}
+                                onClick={() => setSelectedImageIndex(index)}
+                                className="group relative overflow-hidden rounded-xl shadow-md cursor-pointer h-80"
+                            >
                                 <img
                                     src={item.imageUrl}
                                     alt={item.title}
@@ -73,13 +100,55 @@ const Gallery = () => {
                                         <span className="text-brand-gold text-xs font-bold tracking-widest uppercase mb-1">{item.category}</span>
                                     )}
                                     <h3 className="text-white text-lg font-bold">{item.title}</h3>
-                                    {/* <p className="text-gray-300 text-sm">{item.description}</p> */}
                                 </div>
                             </div>
                         ))}
                     </div>
                 )}
             </div>
+
+            {/* Lightbox Modal */}
+            {selectedImageIndex !== null && filteredItems[selectedImageIndex] && (
+                <div className="fixed inset-0 z-[60] bg-black/95 flex items-center justify-center p-4">
+                    {/* Close Button */}
+                    <button
+                        onClick={() => setSelectedImageIndex(null)}
+                        className="absolute top-4 right-4 text-white/70 hover:text-white transition p-2 bg-black/20 rounded-full"
+                    >
+                        <X size={32} />
+                    </button>
+
+                    {/* Navigation Buttons */}
+                    <button
+                        onClick={handlePrev}
+                        className="absolute left-4 text-white/70 hover:text-white transition p-2 bg-black/20 rounded-full"
+                    >
+                        <ChevronLeft size={48} />
+                    </button>
+
+                    <button
+                        onClick={handleNext}
+                        className="absolute right-4 text-white/70 hover:text-white transition p-2 bg-black/20 rounded-full"
+                    >
+                        <ChevronRight size={48} />
+                    </button>
+
+                    {/* Image */}
+                    <div className="max-w-5xl max-h-[85vh] flex flex-col items-center">
+                        <img
+                            src={filteredItems[selectedImageIndex].imageUrl}
+                            alt={filteredItems[selectedImageIndex].title}
+                            className="max-h-[80vh] w-auto object-contain rounded-lg shadow-2xl"
+                        />
+                        <div className="mt-4 text-center">
+                            <h3 className="text-xl font-bold text-white font-serif">{filteredItems[selectedImageIndex].title}</h3>
+                            {filteredItems[selectedImageIndex].category && (
+                                <span className="text-brand-gold text-sm tracking-widest uppercase">{filteredItems[selectedImageIndex].category}</span>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
