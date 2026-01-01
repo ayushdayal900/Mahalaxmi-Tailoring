@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
-import axios from 'axios';
+import api from '../services/api';
 import { Ruler, User, Package, LogOut, MapPin, Plus, Trash2, Settings } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -49,7 +49,7 @@ const CustomerDashboard = () => {
             if (!token) return;
 
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            const res = await axios.get('http://localhost:5000/api/auth/me', config);
+            const res = await api.get('/auth/me', config);
             if (res.data.addresses) {
                 setAddresses(res.data.addresses);
             }
@@ -62,7 +62,7 @@ const CustomerDashboard = () => {
         try {
             const token = localStorage.getItem('token');
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            const res = await axios.get('http://localhost:5000/api/customers/measurements', config);
+            const res = await api.get('/customers/measurements', config);
             setMeasurements(res.data);
         } catch (error) {
             console.log("No measurements found or error fetching");
@@ -90,7 +90,7 @@ const CustomerDashboard = () => {
         try {
             const token = localStorage.getItem('token');
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            const res = await axios.get('http://localhost:5000/api/orders/myorders', config);
+            const res = await api.get('/orders/myorders', config);
             setAllOrders(res.data);
         } catch (error) {
             console.error("Error fetching orders", error);
@@ -101,7 +101,7 @@ const CustomerDashboard = () => {
         try {
             const token = localStorage.getItem('token');
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            const ordersRes = await axios.get('http://localhost:5000/api/orders/myorders', config);
+            const ordersRes = await api.get('/orders/myorders', config);
 
             const orders = ordersRes.data;
             const active = orders.filter(o => o.status !== 'completed' && o.status !== 'cancelled').length;
@@ -119,7 +119,7 @@ const CustomerDashboard = () => {
         try {
             const token = localStorage.getItem('token');
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            const res = await axios.delete(`http://localhost:5000/api/customers/address/${id}`, config);
+            const res = await api.delete(`/customers/address/${id}`, config);
             setAddresses(res.data); // Returns updated list
         } catch (error) {
             console.error("Error deleting address", error);

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useContext } from 'react';
-import axios from 'axios';
+import api from '../../services/api';
 import { MessageCircle, X, Send, ShoppingBag, MapPin, User, LayoutDashboard, Database, UserPlus, LogIn, Phone, Globe } from 'lucide-react';
 import { AuthContext } from '../../context/AuthContext';
 import { CartContext } from '../../context/CartContext';
@@ -67,7 +67,7 @@ const ChatWidget = () => {
             }
 
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            const res = await axios.post('http://localhost:5000/api/chatbot/message', { message: text }, config);
+            const res = await api.post('/chatbot/message', { message: text }, config);
 
             // Add Bot Response
             const botMsg = { type: 'bot', text: res.data.text };

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 import { Package, Users, DollarSign, Clock, Scissors, Activity, TrendingUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import AnalyticsDashboard from '../components/Analytics/AnalyticsDashboard';
 
 const AdminDashboard = () => {
     const [stats, setStats] = useState(null);
@@ -16,7 +17,7 @@ const AdminDashboard = () => {
             const token = localStorage.getItem('token');
             const config = { headers: { Authorization: `Bearer ${token}` } };
             // Ensure api endpoint matches backend route
-            const res = await axios.get('http://localhost:5000/api/admin/stats', config);
+            const res = await api.get('/admin/stats', config);
             setStats(res.data);
         } catch (error) {
             console.error("Error fetching admin stats", error);
@@ -82,61 +83,9 @@ const AdminDashboard = () => {
                 />
             </div>
 
-            {/* Charts Section */}
-            <div className="grid lg:grid-cols-2 gap-8 mb-8">
-                {/* Revenue Trend Line Chart */}
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <div className="flex justify-between items-center mb-6">
-                        <h3 className="font-bold text-gray-800 flex items-center gap-2">
-                            <TrendingUp size={18} /> Revenue Trend (Last 30 Days)
-                        </h3>
-                    </div>
-                    <div className="h-64 flex items-end justify-between gap-2">
-                        {stats.revenueTrend?.map((day, idx) => (
-                            <div key={idx} className="flex-1 flex flex-col justify-end items-center group relative">
-                                <div
-                                    className="w-full bg-brand-maroon/80 rounded-t-sm hover:bg-brand-maroon transition-all duration-300"
-                                    style={{ height: `${(day.total / maxRevenue) * 100}%` }}
-                                ></div>
-                                {/* Tooltip */}
-                                <div className="absolute bottom-full mb-2 hidden group-hover:block bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-10">
-                                    {day._id}: ₹{day.total}
-                                </div>
-                            </div>
-                        ))}
-                        {stats.revenueTrend?.length === 0 && (
-                            <div className="w-full h-full flex items-center justify-center text-gray-400">
-                                No recent sales data.
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Orders by Status */}
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-2">
-                        <Activity size={18} /> Order Status Distribution
-                    </h3>
-                    <div className="space-y-4">
-                        {stats.ordersByStatus?.map((status) => (
-                            <div key={status._id}>
-                                <div className="flex justify-between text-sm mb-1">
-                                    <span className="capitalize text-gray-700 font-medium">{status._id.replace('_', ' ')}</span>
-                                    <span className="text-gray-500">{status.count} orders</span>
-                                </div>
-                                <div className="w-full bg-gray-100 rounded-full h-2.5">
-                                    <div
-                                        className={`h-2.5 rounded-full ${status._id === 'completed' ? 'bg-green-500' :
-                                                status._id === 'pending' ? 'bg-yellow-400' :
-                                                    status._id === 'in_stitching' ? 'bg-purple-500' : 'bg-blue-500'
-                                            }`}
-                                        style={{ width: `${(status.count / stats.totalOrders) * 100}%` }}
-                                    ></div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
+            {/* Analytics Dashboard */}
+            <div className="mb-8">
+                <AnalyticsDashboard />
             </div>
 
             {/* Recent Orders Table */}

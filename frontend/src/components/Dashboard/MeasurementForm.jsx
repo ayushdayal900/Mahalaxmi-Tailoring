@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../../services/api';
 
 const MeasurementForm = ({ initialData, onSave }) => {
     const [formData, setFormData] = useState({
@@ -60,7 +60,7 @@ const MeasurementForm = ({ initialData, onSave }) => {
         setMessage('');
 
         try {
-            await axios.post('http://localhost:5000/api/customers/measurements', formData);
+            await api.post('/customers/measurements', formData);
             setMessage('Measurements saved successfully!');
             if (onSave) onSave();
         } catch (error) {

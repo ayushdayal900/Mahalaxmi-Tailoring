@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { MapPin, Phone, Mail, Instagram, Facebook } from 'lucide-react';
-import axios from 'axios';
+import api from '../services/api';
 
 const Contact = () => {
     const [formData, setFormData] = useState({ name: '', email: '', phone: '', message: '' });
@@ -8,7 +8,7 @@ const Contact = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await axios.post('http://localhost:5000/api/contact', formData);
+            await api.post('/contact', formData);
             alert('Thank you for reaching out! We have received your message.');
             setFormData({ name: '', email: '', phone: '', message: '' });
         } catch (error) {

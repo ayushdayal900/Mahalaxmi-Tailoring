@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { Plus, Edit2, Trash2, X, Save } from 'lucide-react';
+import api from '../services/api';
+import { Plus, Edit2, Trash2, X, Save, Image as ImageIcon } from 'lucide-react';
+import CloudinaryImagePicker from '../components/Common/CloudinaryImagePicker';
 
 const AdminProducts = () => {
     const [products, setProducts] = useState([]);
@@ -8,6 +9,7 @@ const AdminProducts = () => {
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editingProduct, setEditingProduct] = useState(null);
+    const [showImagePicker, setShowImagePicker] = useState(false);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -21,7 +23,7 @@ const AdminProducts = () => {
 
     const fetchProducts = async () => {
         try {
-            const res = await axios.get('http://localhost:5000/api/products');
+            const res = await api.get('/products');
             setProducts(res.data);
             setLoading(false);
         } catch (error) {
@@ -32,7 +34,7 @@ const AdminProducts = () => {
 
     const fetchCategories = async () => {
         try {
-            const res = await axios.get('http://localhost:5000/api/categories');
+            const res = await api.get('/categories');
             setCategories(res.data);
         } catch (error) {
             console.error("Error fetching categories", error);
@@ -68,8 +70,8 @@ const AdminProducts = () => {
         // Construct payload
         const payload = {
             ...formData,
-            images: formData.images.split(',').map(url => ({ url: url.trim() })),
-            fabricOptions: formData.fabricOptions.split(',').map(f => f.trim())
+            images: formData.images.split(',').map(url => url.trim()).filter(url => url !== '').map(url => ({ url })),
+            fabricOptions: formData.fabricOptions.split(',').map(f => f.trim()).filter(f => f !== '')
         };
 
         try {
@@ -77,16 +79,17 @@ const AdminProducts = () => {
             const config = { headers: { Authorization: `Bearer ${token}` } };
 
             if (editingProduct) {
-                await axios.put(`http://localhost:5000/api/products/${editingProduct._id}`, payload, config);
+                await api.put(`/products/${editingProduct._id}`, payload, config);
             } else {
-                await axios.post(`http://localhost:5000/api/products`, payload, config);
+                await api.post(`/products`, payload, config);
             }
             setShowModal(false);
             fetchProducts();
             alert("Product saved successfully!");
         } catch (error) {
             console.error("Error saving product", error);
-            alert("Failed to save product.");
+            const msg = error.response?.data?.message || "Failed to save product.";
+            alert(msg);
         }
     };
 
@@ -95,7 +98,7 @@ const AdminProducts = () => {
         try {
             const token = localStorage.getItem('token');
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            await axios.delete(`http://localhost:5000/api/products/${id}`, config);
+            await api.delete(`/products/${id}`, config);
             fetchProducts();
         } catch (error) {
             console.error(error);
@@ -187,7 +190,17 @@ const AdminProducts = () => {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Image URLs (comma separated)</label>
-                                <input type="text" className="w-full p-2 border rounded-lg" value={formData.images} onChange={e => setFormData({ ...formData, images: e.target.value })} />
+                                <div className="flex gap-2">
+                                    <input type="text" className="w-full p-2 border rounded-lg" value={formData.images} onChange={e => setFormData({ ...formData, images: e.target.value })} />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowImagePicker(true)}
+                                        className="bg-gray-100 hover:bg-gray-200 text-gray-700 p-2 rounded-lg transition"
+                                        title="Select from Cloudinary"
+                                    >
+                                        <ImageIcon size={20} />
+                                    </button>
+                                </div>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Fabric Options (comma separated)</label>
@@ -201,6 +214,21 @@ const AdminProducts = () => {
                         </form>
                     </div>
                 </div>
+            )}
+
+            {/* Cloudinary Picker */}
+            {showImagePicker && (
+                <CloudinaryImagePicker
+                    multiple={true}
+                    onClose={() => setShowImagePicker(false)}
+                    onSelect={(urls) => {
+                        const newImages = urls.join(', ');
+                        setFormData(prev => ({
+                            ...prev,
+                            images: prev.images ? `${prev.images}, ${newImages}` : newImages
+                        }));
+                    }}
+                />
             )}
         </div>
     );

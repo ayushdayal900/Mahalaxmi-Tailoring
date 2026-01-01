@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import axios from 'axios';
+import api from '../services/api';
 import { CheckCircle, Clock, Truck, Package, ArrowLeft, MapPin } from 'lucide-react';
 
 const OrderDetails = () => {
@@ -17,7 +17,7 @@ const OrderDetails = () => {
                 // Ideally: GET /api/orders/:id. Checking orderRoutes... 
                 // Based on previous knowledge, getOrderById is likely in controller but route param might be different.
                 // Using standard REST pattern for now.
-                const res = await axios.get(`http://localhost:5000/api/orders/${id}`, config);
+                const res = await api.get(`/orders/${id}`, config);
                 console.log("Order Details API Response:", res.data);
                 setOrder(res.data);
             } catch (error) {

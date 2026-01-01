@@ -13,7 +13,7 @@ const About = () => {
                 {/* Hero Section */}
                 <div className="text-center mb-16">
                     <span className="text-brand-gold font-bold tracking-widest uppercase mb-2 block">Our Heritage</span>
-                    <h1 className="text-4xl md:text-5xl font-serif font-bold text-brand-maroon mb-6">Weaving Tradition Since 2005</h1>
+                    <h1 className="text-4xl md:text-5xl font-serif font-bold text-brand-maroon mb-6">Weaving Tradition Since 2004</h1>
                     <p className="max-w-2xl mx-auto text-brand-charcoal text-lg">
                         At Mahalaxmi Tailors, we don't just stitch clothes; we craft heirlooms. Specialized in authentic Maharashtrian attire, we bring decades of mastery to every fold and stitch.
                     </p>

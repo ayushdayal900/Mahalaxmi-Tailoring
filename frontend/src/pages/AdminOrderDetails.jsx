@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import axios from 'axios';
+import api from '../services/api';
 import { ArrowLeft, Package, User, MapPin, CreditCard, Save, Send, AlertTriangle } from 'lucide-react';
 
 const AdminOrderDetails = () => {
@@ -19,7 +19,7 @@ const AdminOrderDetails = () => {
         try {
             const token = localStorage.getItem('token');
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            const res = await axios.get(`http://localhost:5000/api/orders/${id}`, config); // Using standard order fetch for now
+            const res = await api.get(`/orders/${id}`, config); // Using standard order fetch for now
             setOrder(res.data);
             setStatus(res.data.status);
             setLoading(false);
@@ -35,7 +35,7 @@ const AdminOrderDetails = () => {
         try {
             const token = localStorage.getItem('token');
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            const res = await axios.patch(`http://localhost:5000/api/admin/orders/${id}/status`,
+            const res = await api.patch(`/admin/orders/${id}/status`,
                 { status, note: adminNote },
                 config
             );

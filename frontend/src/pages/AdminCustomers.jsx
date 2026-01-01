@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 import { User, Mail, Phone, ShoppingBag } from 'lucide-react';
 
 const AdminCustomers = () => {
@@ -22,7 +22,7 @@ const AdminCustomers = () => {
                     },
                 };
 
-                const { data } = await axios.get('http://localhost:5000/api/admin/customers', config);
+                const { data } = await api.get('/admin/customers', config);
                 setCustomers(data);
                 setLoading(false);
             } catch (error) {

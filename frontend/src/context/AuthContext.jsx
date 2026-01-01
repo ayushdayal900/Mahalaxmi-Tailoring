@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 
 export const AuthContext = createContext();
 
@@ -8,9 +8,9 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
     const [token, setToken] = useState(localStorage.getItem('token'));
 
-    // Configure axios defaults
+    // Configure api defaults
     if (token) {
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     }
 
     // Load user on mount
@@ -18,7 +18,7 @@ export const AuthProvider = ({ children }) => {
         const loadUser = async () => {
             if (token) {
                 try {
-                    const res = await axios.get('http://localhost:5000/api/auth/me');
+                    const res = await api.get('/auth/me');
                     setUser(res.data);
                 } catch (error) {
                     console.error("Failed to load user", error);
@@ -35,7 +35,7 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         if (!user) return; // Only track if user is logged in
 
-        const INACTIVITY_LIMIT = 30 * 1000; // 30 seconds for testing
+        const INACTIVITY_LIMIT = 30 * 60 * 1000; // 30 minutes in milliseconds
 
         const updateActivity = () => {
             // Simple throttling: only update if 1 second has passed since last update
@@ -66,8 +66,8 @@ export const AuthProvider = ({ children }) => {
         window.addEventListener('click', updateActivity);
         window.addEventListener('scroll', updateActivity);
 
-        // Check every second (for precise 30s testing)
-        const intervalId = setInterval(checkInactivity, 1000);
+        // Check every minute
+        const intervalId = setInterval(checkInactivity, 60 * 1000);
 
         // Initial check on mount/login
         localStorage.setItem('lastActivity', Date.now().toString());
@@ -84,11 +84,11 @@ export const AuthProvider = ({ children }) => {
     // Login
     const login = async (email, password) => {
         try {
-            const res = await axios.post('http://localhost:5000/api/auth/login', { email, password });
+            const res = await api.post('/auth/login', { email, password });
             localStorage.setItem('token', res.data.token);
             setToken(res.data.token);
             setUser(res.data);
-            axios.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
+            api.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
             return { success: true, role: res.data.role };
         } catch (error) {
             return { success: false, message: error.response?.data?.message || 'Login failed' };
@@ -98,11 +98,11 @@ export const AuthProvider = ({ children }) => {
     // Register
     const register = async (userData) => {
         try {
-            const res = await axios.post('http://localhost:5000/api/auth/register', userData);
+            const res = await api.post('/auth/register', userData);
             localStorage.setItem('token', res.data.token);
             setToken(res.data.token);
             setUser(res.data);
-            axios.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
+            api.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
             return { success: true };
         } catch (error) {
             return { success: false, message: error.response?.data?.message || 'Registration failed' };
@@ -114,7 +114,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('token');
         setToken(null);
         setUser(null);
-        delete axios.defaults.headers.common['Authorization'];
+        delete api.defaults.headers.common['Authorization'];
     };
 
     return (

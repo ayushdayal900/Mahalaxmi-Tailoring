@@ -36,12 +36,31 @@ exports.getProductById = async (req, res) => {
 // @access  Private/Admin
 exports.createProduct = async (req, res) => {
     try {
-        const product = new Product(req.body);
+        const {
+            name,
+            price,
+            description,
+            images,
+            category,
+            fabricOptions,
+            countInStock
+        } = req.body;
+
+        const product = new Product({
+            name,
+            price,
+            description,
+            images,
+            category,
+            fabricOptions,
+            countInStock
+        });
+
         const createdProduct = await product.save();
         res.status(201).json(createdProduct);
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server Error' });
+        console.error("Create Product Error:", error);
+        res.status(400).json({ message: error.message || 'Invalid product data' });
     }
 };
 
@@ -54,8 +73,9 @@ exports.updateProduct = async (req, res) => {
             name,
             price,
             description,
-            image,
+            images,
             category,
+            fabricOptions,
             countInStock
         } = req.body;
 
@@ -65,8 +85,9 @@ exports.updateProduct = async (req, res) => {
             product.name = name || product.name;
             product.price = price || product.price;
             product.description = description || product.description;
-            product.image = image || product.image;
+            product.images = images || product.images;
             product.category = category || product.category;
+            product.fabricOptions = fabricOptions || product.fabricOptions;
             product.countInStock = countInStock || product.countInStock;
 
             const updatedProduct = await product.save();
