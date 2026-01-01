@@ -47,7 +47,7 @@ const swaggerSpecs = require('./config/swagger');
 app.use('/api/docs', swaggerUI.serve, swaggerUI.setup(swaggerSpecs));
 
 // Body Parser
-app.use(express.json({ limit: '10kb' })); // Limit body size
+app.use(express.json({ limit: '10mb' })); // Limit body size
 
 // Data Sanitization
 // app.use(mongoSanitize()); // Prevent NoSQL injection
@@ -73,6 +73,8 @@ app.use('/api/contact', require('./routes/contactRoutes'));
 app.use('/api/payments', require('./routes/paymentRoutes'));
 app.use('/api/cms', cmsRoutes);
 app.use('/api/chatbot', require('./routes/chatbotRoutes'));
+app.use('/api/analytics', require('./routes/analyticsRoutes'));
+app.use('/api/admin/cloudinary', require('./routes/cloudinaryRoutes'));
 
 app.get('/', (req, res) => {
     res.send('Mahalaxmi Tailoring API is running...');

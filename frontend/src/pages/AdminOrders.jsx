@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 import { Search, Filter, Eye, ChevronRight, ChevronLeft, Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -24,7 +24,7 @@ const AdminOrders = () => {
         try {
             const token = localStorage.getItem('token');
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            const res = await axios.get('http://localhost:5000/api/admin/orders', config);
+            const res = await api.get('/admin/orders', config);
             setOrders(res.data);
             setFilteredOrders(res.data);
         } catch (error) {

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Header from '../components/Layout/Header';
 import { Scissors, Ruler, Award } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import axios from 'axios';
+import api from '../services/api';
 
 // Import Assets
 import fabricTexture from '../assets/fabric_texture.png';
@@ -91,7 +91,7 @@ const Home = () => {
     useEffect(() => {
         const fetchTestimonials = async () => {
             try {
-                const res = await axios.get('http://localhost:5000/api/cms/testimonial');
+                const res = await api.get('/cms/testimonial');
                 setTestimonials(res.data);
             } catch (error) {
                 console.error("Error fetching testimonials", error);

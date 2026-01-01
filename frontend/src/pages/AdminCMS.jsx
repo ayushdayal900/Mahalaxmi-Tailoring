@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useContext } from 'react';
-import axios from 'axios';
-import { Layout, MessageSquare, HelpCircle, Image as ImageIcon, Plus, Trash2, Edit2, X, Loader } from 'lucide-react';
+import api from '../services/api';
+import { Layout, MessageSquare, HelpCircle, Image as ImageIcon, Plus, Trash2, Edit2, X, Loader, Folder } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
+import CloudinaryImagePicker from '../components/Common/CloudinaryImagePicker';
 
 const AdminCMS = () => {
     const [activeTab, setActiveTab] = useState('banners');
@@ -9,6 +10,7 @@ const AdminCMS = () => {
     const [loading, setLoading] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
+    const [showImagePicker, setShowImagePicker] = useState(false);
     const [currentItem, setCurrentItem] = useState(null);
     const { token } = useContext(AuthContext);
 
@@ -23,13 +25,14 @@ const AdminCMS = () => {
         rating: 5,
         content: '',
         question: '',
+        category: '',
         order: 0,
         isActive: true
     });
 
     const resetForm = () => {
         setFormData({
-            type: activeTab === 'banners' ? 'banner' : activeTab === 'testimonials' ? 'testimonial' : 'faq',
+            type: activeTab === 'banners' ? 'banner' : activeTab === 'testimonials' ? 'testimonial' : activeTab === 'faqs' ? 'faq' : 'gallery',
             title: '',
             imageUrl: '',
             link: '',
@@ -38,6 +41,7 @@ const AdminCMS = () => {
             rating: 5,
             content: '',
             question: '',
+            category: '',
             order: 0,
             isActive: true
         });
@@ -52,9 +56,9 @@ const AdminCMS = () => {
     const fetchItems = async () => {
         setLoading(true);
         try {
-            const endpointType = activeTab === 'banners' ? 'banner' : activeTab === 'testimonials' ? 'testimonial' : 'faq';
+            const endpointType = activeTab === 'banners' ? 'banner' : activeTab === 'testimonials' ? 'testimonial' : activeTab === 'faqs' ? 'faq' : 'gallery';
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            const res = await axios.get(`http://localhost:5000/api/cms/admin/${endpointType}`, config);
+            const res = await api.get(`/cms/admin/${endpointType}`, config);
             setItems(res.data);
         } catch (error) {
             console.error("Error fetching items", error);
@@ -67,7 +71,7 @@ const AdminCMS = () => {
         if (!window.confirm('Are you sure you want to delete this item?')) return;
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            await axios.delete(`http://localhost:5000/api/cms/${id}`, config);
+            await api.delete(`/cms/${id}`, config);
             fetchItems();
         } catch (error) {
             console.error("Error deleting item", error);
@@ -78,12 +82,12 @@ const AdminCMS = () => {
         e.preventDefault();
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            const payload = { ...formData, type: activeTab === 'banners' ? 'banner' : activeTab === 'testimonials' ? 'testimonial' : 'faq' };
+            const payload = { ...formData, type: activeTab === 'banners' ? 'banner' : activeTab === 'testimonials' ? 'testimonial' : activeTab === 'faqs' ? 'faq' : 'gallery' };
 
             if (isEditing && currentItem) {
-                await axios.put(`http://localhost:5000/api/cms/${currentItem._id}`, payload, config);
+                await api.put(`/cms/${currentItem._id}`, payload, config);
             } else {
-                await axios.post('http://localhost:5000/api/cms', payload, config);
+                await api.post('/cms', payload, config);
             }
             setShowModal(false);
             resetForm();
@@ -105,6 +109,7 @@ const AdminCMS = () => {
             rating: item.rating || 5,
             content: item.content || '',
             question: item.question || '',
+            category: item.category || '',
             order: item.order || 0,
             isActive: item.isActive
         });
@@ -141,30 +146,36 @@ const AdminCMS = () => {
                     icon={HelpCircle}
                     label="FAQs"
                 />
+                <TabButton
+                    active={activeTab === 'gallery'}
+                    onClick={() => setActiveTab('gallery')}
+                    icon={Folder}
+                    label="Gallery"
+                />
             </div>
 
             {/* Content Area */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 min-h-[400px]">
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-xl font-bold text-gray-800">
-                        {activeTab === 'banners' ? 'Homepage Banners' : activeTab === 'testimonials' ? 'Customer Reviews' : 'Frequently Asked Questions'}
+                        {activeTab === 'banners' ? 'Homepage Banners' : activeTab === 'testimonials' ? 'Customer Reviews' : activeTab === 'faqs' ? 'Frequently Asked Questions' : 'Gallery Images'}
                     </h2>
                     <button
                         onClick={openAddModal}
                         className="flex items-center gap-2 bg-brand-maroon text-white px-4 py-2 rounded-lg text-sm hover:bg-red-900 transition"
                     >
-                        <Plus size={16} /> Add {activeTab === 'banners' ? 'Banner' : activeTab === 'testimonials' ? 'Testimonial' : 'FAQ'}
+                        <Plus size={16} /> Add {activeTab === 'banners' ? 'Banner' : activeTab === 'testimonials' ? 'Testimonial' : activeTab === 'faqs' ? 'FAQ' : 'Image'}
                     </button>
                 </div>
 
                 {loading ? (
                     <div className="flex justify-center p-12"><Loader className="animate-spin text-gray-400" /></div>
                 ) : (
-                    <div className={activeTab === 'banners' ? "grid grid-cols-1 md:grid-cols-2 gap-4" : "space-y-4"}>
+                    <div className={(activeTab === 'banners' || activeTab === 'gallery') ? "grid grid-cols-1 md:grid-cols-2 gap-4" : "space-y-4"}>
                         {items.length === 0 && <p className="text-gray-500 text-center py-8">No items found.</p>}
 
                         {items.map(item => (
-                            <div key={item._id} className={`border rounded-xl border-gray-100 overflow-hidden group hover:shadow-md transition relative ${activeTab === 'banners' ? '' : 'p-4 flex justify-between items-start'}`}>
+                            <div key={item._id} className={`border rounded-xl border-gray-100 overflow-hidden group hover:shadow-md transition relative ${(activeTab === 'banners' || activeTab === 'gallery') ? '' : 'p-4 flex justify-between items-start'}`}>
                                 {activeTab === 'banners' && (
                                     <>
                                         <div className="h-40 bg-gray-100 relative">
@@ -203,6 +214,22 @@ const AdminCMS = () => {
                                     </div>
                                 )}
 
+                                {activeTab === 'gallery' && (
+                                    <>
+                                        <div className="h-40 bg-gray-100 relative">
+                                            {item.imageUrl ? (
+                                                <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <span className="absolute inset-0 flex items-center justify-center text-gray-400">No Image</span>
+                                            )}
+                                        </div>
+                                        <div className="p-4 bg-white">
+                                            <p className="text-xs font-bold text-brand-gold uppercase">{item.category}</p>
+                                            <h3 className="font-bold text-gray-800 mt-1">{item.title}</h3>
+                                        </div>
+                                    </>
+                                )}
+
                                 {/* Actions */}
                                 <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 p-1 rounded shadow-sm">
                                     <button onClick={() => openEditModal(item)} className="text-blue-600 hover:text-blue-800 p-1"><Edit2 size={16} /></button>
@@ -220,7 +247,7 @@ const AdminCMS = () => {
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
                         <div className="p-6 border-b border-gray-100 flex justify-between items-center">
                             <h3 className="font-bold text-xl text-gray-800">
-                                {isEditing ? 'Edit' : 'Add'} {activeTab === 'banners' ? 'Banner' : activeTab === 'testimonials' ? 'Testimonial' : 'FAQ'}
+                                {isEditing ? 'Edit' : 'Add'} {activeTab === 'banners' ? 'Banner' : activeTab === 'testimonials' ? 'Testimonial' : activeTab === 'faqs' ? 'FAQ' : 'Image'}
                             </h3>
                             <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600">
                                 <X size={24} />
@@ -236,7 +263,16 @@ const AdminCMS = () => {
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
-                                            <input type="text" className="w-full p-2 border rounded-lg" value={formData.imageUrl} onChange={e => setFormData({ ...formData, imageUrl: e.target.value })} />
+                                            <div className="flex gap-2">
+                                                <input type="text" className="w-full p-2 border rounded-lg" value={formData.imageUrl} onChange={e => setFormData({ ...formData, imageUrl: e.target.value })} />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowImagePicker(true)}
+                                                    className="bg-gray-100 hover:bg-gray-200 text-gray-700 p-2 rounded-lg transition"
+                                                >
+                                                    <ImageIcon size={20} />
+                                                </button>
+                                            </div>
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Link (Optional)</label>
@@ -279,6 +315,32 @@ const AdminCMS = () => {
                                     </>
                                 )}
 
+                                {activeTab === 'gallery' && (
+                                    <>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Title/Caption</label>
+                                            <input type="text" className="w-full p-2 border rounded-lg" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                                            <input type="text" className="w-full p-2 border rounded-lg" placeholder="e.g. Wedding, Blouse" value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
+                                            <div className="flex gap-2">
+                                                <input type="text" className="w-full p-2 border rounded-lg" value={formData.imageUrl} onChange={e => setFormData({ ...formData, imageUrl: e.target.value })} />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowImagePicker(true)}
+                                                    className="bg-gray-100 hover:bg-gray-200 text-gray-700 p-2 rounded-lg transition"
+                                                >
+                                                    <ImageIcon size={20} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+
                                 <div className="flex gap-4">
                                     <div className="flex-1"></div>
                                     <div className="flex items-center pt-6">
@@ -296,6 +358,48 @@ const AdminCMS = () => {
                         </div>
                     </div>
                 </div>
+            )}
+            {/* Cloudinary Picker */}
+            {showImagePicker && (
+                <CloudinaryImagePicker
+                    multiple={activeTab === 'gallery' && !isEditing}
+                    onClose={() => setShowImagePicker(false)}
+                    onSelect={async (urls) => {
+                        if (activeTab === 'gallery' && urls.length > 1 && !isEditing) {
+                            if (!window.confirm(`Create ${urls.length} gallery items with current settings?`)) return;
+
+                            setShowImagePicker(false);
+                            setLoading(true);
+                            try {
+                                const requests = urls.map(url => {
+                                    const payload = {
+                                        ...formData,
+                                        imageUrl: url,
+                                        type: 'gallery' // Ensure type is set
+                                    };
+                                    const config = { headers: { Authorization: `Bearer ${token}` } };
+                                    return api.post('/cms', payload, config);
+                                });
+
+                                await Promise.all(requests);
+                                alert(`Successfully created ${urls.length} gallery items.`);
+                                setShowModal(false);
+                                resetForm();
+                                fetchItems();
+                            } catch (error) {
+                                console.error("Batch creation failed", error);
+                                alert("Some items failed to create. Please check console.");
+                            } finally {
+                                setLoading(false);
+                            }
+                        } else {
+                            if (urls.length > 0) {
+                                setFormData(prev => ({ ...prev, imageUrl: urls[0] }));
+                                setShowImagePicker(false);
+                            }
+                        }
+                    }}
+                />
             )}
         </div>
     );

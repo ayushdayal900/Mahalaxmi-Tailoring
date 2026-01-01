@@ -22,9 +22,7 @@ const productSchema = new mongoose.Schema({
         type: Number,
         default: 14,
     },
-    fabricOptions: [{
-        type: String // e.g. 'Silk', 'Cotton'
-    }],
+    fabricOptions: [String], // e.g. ['Silk', 'Cotton']
     customizationOptions: {
         type: Map,
         of: mongoose.Schema.Types.Mixed // Flexible JSON structure

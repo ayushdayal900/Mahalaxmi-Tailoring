@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
-import axios from 'axios';
+import api from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, Ruler, Check, CreditCard } from 'lucide-react';
 
@@ -27,7 +27,7 @@ const Checkout = () => {
     const fetchUserData = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await axios.get('http://localhost:5000/api/auth/me', {
+            const res = await api.get('/auth/me', {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (res.data.addresses) {
@@ -44,7 +44,7 @@ const Checkout = () => {
     const fetchMeasurements = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await axios.get('http://localhost:5000/api/customers/measurements', {
+            const res = await api.get('/customers/measurements', {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setMeasurements(res.data);
@@ -87,7 +87,7 @@ const Checkout = () => {
                 paymentMethod: paymentMethod // Pass selected method
             };
 
-            const orderRes = await axios.post('http://localhost:5000/api/orders', orderData, config);
+            const orderRes = await api.post('/orders', orderData, config);
             const localOrder = orderRes.data;
 
             if (!localOrder || !localOrder._id) throw new Error("Order creation failed");
@@ -109,7 +109,7 @@ const Checkout = () => {
             }
 
             // 3. Create Razorpay Order
-            const paymentRes = await axios.post('http://localhost:5000/api/payments/create-order', {
+            const paymentRes = await api.post('/payments/create-order', {
                 orderId: localOrder._id
             }, config);
 
@@ -125,7 +125,7 @@ const Checkout = () => {
                 handler: async function (response) {
                     // 4. Verify Payment
                     try {
-                        const verifyRes = await axios.post('http://localhost:5000/api/payments/verify', {
+                        const verifyRes = await api.post('/payments/verify', {
                             razorpay_order_id: response.razorpay_order_id,
                             razorpay_payment_id: response.razorpay_payment_id,
                             razorpay_signature: response.razorpay_signature,

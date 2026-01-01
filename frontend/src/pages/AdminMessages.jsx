@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 import { Mail, Phone, Calendar, User, Search } from 'lucide-react';
 
 const AdminMessages = () => {
@@ -19,7 +19,7 @@ const AdminMessages = () => {
                     Authorization: `Bearer ${token}`
                 }
             };
-            const res = await axios.get('http://localhost:5000/api/contact', config);
+            const res = await api.get('/contact', config);
             setMessages(res.data.data); // Assuming response structure { success: true, data: [...] }
             setLoading(false);
         } catch (error) {

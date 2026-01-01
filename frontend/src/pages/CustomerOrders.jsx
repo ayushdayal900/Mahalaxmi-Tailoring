@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 import { Package, Calendar, ChevronRight, Clock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -14,7 +14,7 @@ const CustomerOrders = () => {
             try {
                 const token = localStorage.getItem('token');
                 const config = { headers: { Authorization: `Bearer ${token}` } };
-                const res = await axios.get('http://localhost:5000/api/orders/myorders', config);
+                const res = await api.get('/orders/myorders', config);
                 setOrders(res.data);
             } catch (error) {
                 console.error("Error fetching orders:", error);

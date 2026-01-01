@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import api from '../../services/api';
 import { Home, Briefcase, MapPin, X, Check } from 'lucide-react';
 
 const AddressForm = ({ onSave, onCancel }) => {
@@ -34,7 +34,7 @@ const AddressForm = ({ onSave, onCancel }) => {
                 },
             };
 
-            await axios.post('http://localhost:5000/api/customers/address', formData, config);
+            await api.post('/customers/address', formData, config);
             onSave();
         } catch (err) {
             console.error(err);

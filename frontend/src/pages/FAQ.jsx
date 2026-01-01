@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 import { ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
 
 const FAQ = () => {
@@ -8,7 +8,7 @@ const FAQ = () => {
     useEffect(() => {
         const fetchFaqs = async () => {
             try {
-                const res = await axios.get('http://localhost:5000/api/cms/faq');
+                const res = await api.get('/cms/faq');
                 setFetchedFaqs(res.data);
             } catch (error) {
                 console.error("Error fetching FAQs", error);
