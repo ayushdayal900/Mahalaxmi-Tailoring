@@ -5,7 +5,8 @@ import { Ruler, User, Package, LogOut, MapPin, Plus, Trash2, Settings } from 'lu
 import { Link } from 'react-router-dom';
 
 // Sub-components (Will extract later if complex)
-import MeasurementForm from '../components/Dashboard/MeasurementForm';
+import MeasurementForm from '../components/Dashboard/MeasurementForm'; // Deprecated? Or reusing name?
+import MeasurementTab from '../components/Dashboard/MeasurementTab'; // New Component
 import AddressForm from '../components/Dashboard/AddressForm';
 
 const CustomerDashboard = () => {
@@ -271,18 +272,8 @@ const CustomerDashboard = () => {
                 )}
 
                 {activeTab === 'measurements' && (
-                    <div className="max-w-3xl">
-                        <div className="flex justify-between items-center mb-6">
-                            <h1 className="text-2xl font-serif font-bold text-gray-800">My Measurements</h1>
-                            {measurements && <span className="text-sm text-green-600 bg-green-50 px-3 py-1 rounded-full">Profile Active</span>}
-                        </div>
-
-                        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
-                            <MeasurementForm
-                                initialData={measurements}
-                                onSave={() => fetchMeasurements()}
-                            />
-                        </div>
+                    <div className="max-w-4xl">
+                        <MeasurementTab />
                     </div>
                 )}
                 {activeTab === 'orders' && (

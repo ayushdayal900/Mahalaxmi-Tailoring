@@ -38,4 +38,17 @@ export const getCategories = async () => {
     }
 };
 
+// Measurements API
+export const getMeasurements = async (token) => {
+    const config = { headers: { Authorization: `Bearer ${token}` } };
+    const response = await api.get('/measurements', config);
+    return response.data;
+};
+
+export const updateMeasurements = async (data, token) => {
+    const config = { headers: { Authorization: `Bearer ${token}` } };
+    const response = await api.post('/measurements', data, config);
+    return response.data;
+};
+
 export default api;

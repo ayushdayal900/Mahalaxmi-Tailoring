@@ -77,6 +77,7 @@ app.use('/api/cms', cmsRoutes);
 app.use('/api/chatbot', require('./routes/chatbotRoutes'));
 app.use('/api/analytics', require('./routes/analyticsRoutes'));
 app.use('/api/admin/cloudinary', require('./routes/cloudinaryRoutes'));
+app.use('/api/measurements', require('./routes/measurementRoutes'));
 
 app.get('/', (req, res) => {
     res.send('Mahalaxmi Tailoring API is running...');
