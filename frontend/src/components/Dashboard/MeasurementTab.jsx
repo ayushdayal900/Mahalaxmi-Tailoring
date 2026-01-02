@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import api from '../../services/api';
+import { AuthContext } from '../../context/AuthContext'; // Import AuthContext
 import { Ruler, Save, Edit2, CheckCircle } from 'lucide-react';
 import AppointmentBooking from './AppointmentBooking';
 
 const MeasurementTab = () => {
+    const { token } = React.useContext(AuthContext); // Use token from context
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [measurements, setMeasurements] = useState(null);
@@ -21,15 +23,15 @@ const MeasurementTab = () => {
     const [formData, setFormData] = useState(emptyState);
 
     useEffect(() => {
-        fetchMeasurements();
-    }, []);
+        if (token) {
+            fetchMeasurements();
+        }
+    }, [token]);
 
     const fetchMeasurements = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const config = { headers: { Authorization: `Bearer ${token}` } };
             // Since our backend returns an array, we pick the first one or default
-            const res = await api.get('/measurements', config);
+            const res = await api.get('/measurements');
 
             if (res.data && res.data.length > 0) {
                 setMeasurements(res.data[0]);
@@ -54,10 +56,7 @@ const MeasurementTab = () => {
         setMessage('');
 
         try {
-            const token = localStorage.getItem('token');
-            const config = { headers: { Authorization: `Bearer ${token}` } };
-
-            const res = await api.post('/measurements', formData, config);
+            const res = await api.post('/measurements', formData);
             setMeasurements(res.data); // Update view with saved data
             setIsEditing(false);
             setMessage('Measurements saved successfully!');
