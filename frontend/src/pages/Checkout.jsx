@@ -26,10 +26,7 @@ const Checkout = () => {
 
     const fetchUserData = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const res = await api.get('/auth/me', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await api.get('/auth/me');
             if (res.data.addresses) {
                 setAddresses(res.data.addresses);
                 // Auto-select default
@@ -43,10 +40,7 @@ const Checkout = () => {
 
     const fetchMeasurements = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const res = await api.get('/customers/measurements', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await api.get('/customers/measurements');
             setMeasurements(res.data);
             if (res.data) setSelectedMeasurement(res.data._id);
         } catch (error) {
@@ -70,8 +64,6 @@ const Checkout = () => {
 
         setLoading(true);
         try {
-            const token = localStorage.getItem('token');
-            const config = { headers: { Authorization: `Bearer ${token}` } };
 
             // 1. Create Local Order
             const orderData = {
@@ -87,7 +79,7 @@ const Checkout = () => {
                 paymentMethod: paymentMethod // Pass selected method
             };
 
-            const orderRes = await api.post('/orders', orderData, config);
+            const orderRes = await api.post('/orders', orderData);
             const localOrder = orderRes.data;
 
             if (!localOrder || !localOrder._id) throw new Error("Order creation failed");
@@ -111,7 +103,7 @@ const Checkout = () => {
             // 3. Create Razorpay Order
             const paymentRes = await api.post('/payments/create-order', {
                 orderId: localOrder._id
-            }, config);
+            });
 
             const { razorpay_order_id, amount, currency, key, customer_name, customer_email, customer_contact, description } = paymentRes.data;
 
@@ -130,7 +122,7 @@ const Checkout = () => {
                             razorpay_payment_id: response.razorpay_payment_id,
                             razorpay_signature: response.razorpay_signature,
                             orderId: localOrder._id // Pass local order ID for updating status
-                        }, config);
+                        });
 
                         if (verifyRes.data.success) {
                             alert("Payment Successful!");
