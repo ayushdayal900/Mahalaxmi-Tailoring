@@ -101,22 +101,19 @@ export const updateMeasurements = async (data, token) => {
 };
 
 // Wishlist API
-export const getWishlist = async (token) => {
-    const config = { headers: { Authorization: `Bearer ${token}` } };
-    const response = await api.get('/wishlist', config);
+export const getWishlist = async () => {
+    const response = await api.get('/wishlist');
     return response.data;
 };
 
-export const toggleWishlist = async (productId, token, type = 'Product') => {
-    const config = { headers: { Authorization: `Bearer ${token}` } };
-    const response = await api.post('/wishlist/toggle', { productId, type }, config);
+export const toggleWishlist = async (productId, type = 'Product') => {
+    const response = await api.post('/wishlist/toggle', { productId, type });
     return response.data;
 };
 
 // Reviews API
-export const addReview = async (data, token) => {
-    const config = { headers: { Authorization: `Bearer ${token}` } };
-    const response = await api.post('/reviews', data, config);
+export const addReview = async (data) => {
+    const response = await api.post('/reviews', data);
     return response.data;
 };
 
@@ -126,23 +123,20 @@ export const getProductReviews = async (productId) => {
 };
 
 // Appointment API
-export const bookAppointment = async (data, token) => {
-    const config = { headers: { Authorization: `Bearer ${token}` } };
-    const response = await api.post('/appointments', data, config);
+export const bookAppointment = async (data) => {
+    const response = await api.post('/appointments', data);
     return response.data;
 };
 
 
 
-export const getAllAppointments = async (token) => {
-    const config = { headers: { Authorization: `Bearer ${token}` } };
-    const response = await api.get('/appointments/admin/all', config);
+export const getAllAppointments = async () => {
+    const response = await api.get('/appointments/admin/all');
     return response.data;
 };
 
-export const updateAppointmentStatus = async (id, status, token) => {
-    const config = { headers: { Authorization: `Bearer ${token}` } };
-    const response = await api.put(`/appointments/${id}/status`, { status }, config);
+export const updateAppointmentStatus = async (id, status) => {
+    const response = await api.put(`/appointments/${id}/status`, { status });
     return response.data;
 };
 
