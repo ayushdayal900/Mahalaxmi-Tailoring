@@ -22,7 +22,7 @@ export const WishlistProvider = ({ children }) => {
 
     const fetchWishlist = async () => {
         try {
-            const data = await getWishlist(token);
+            const data = await getWishlist();
             // Assuming data.products is the array of items
             const items = data.products || [];
             setWishlistItems(items);
@@ -53,7 +53,7 @@ export const WishlistProvider = ({ children }) => {
             setWishlistCount(newItems.length);
 
             // API call
-            await apiToggleWishlist(product._id, token);
+            await apiToggleWishlist(product._id);
 
             // Optional: re-fetch to ensure sync, or trust optimistic
             // fetchWishlist(); 
