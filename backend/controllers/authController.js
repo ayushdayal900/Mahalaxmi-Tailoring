@@ -19,8 +19,8 @@ const generateRefreshToken = (id) => {
 // Cookie Options
 const cookieOptions = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production' || process.env.RENDER === 'true', // Force secure on Render
-    sameSite: (process.env.NODE_ENV === 'production' || process.env.RENDER === 'true') ? 'none' : 'strict',
+    secure: true, // Always secure for Vercel/Render
+    sameSite: 'none', // Always none for Cross-Site
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
 };
 
@@ -112,8 +112,10 @@ exports.loginUser = async (req, res) => {
 // @access  Public (Validates Cookie)
 exports.refresh = async (req, res) => {
     const cookies = req.cookies;
+    console.log('DEBUG: Refresh Route Hit. Origin:', req.headers.origin);
+    console.log('DEBUG: Cookies received:', cookies ? Object.keys(cookies) : 'None');
 
-    if (!cookies?.jwt) return res.status(401).json({ message: 'Unauthorized' });
+    if (!cookies?.jwt) return res.status(401).json({ message: 'Unauthorized - No Cookie' });
 
     const refreshToken = cookies.jwt;
 
@@ -139,7 +141,7 @@ exports.logout = (req, res) => {
     const cookies = req.cookies;
     if (!cookies?.jwt) return res.sendStatus(204); // No content
 
-    res.clearCookie('jwt', { httpOnly: true, sameSite: 'None', secure: true });
+    res.clearCookie('jwt', { httpOnly: true, sameSite: 'none', secure: true });
     res.json({ message: 'Cookie cleared' });
 };
 
