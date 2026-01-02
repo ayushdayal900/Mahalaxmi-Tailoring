@@ -9,6 +9,17 @@ const api = axios.create({
 });
 
 // Response Interceptor for Token Refresh
+api.interceptors.request.use(
+    (config) => {
+        const auth = config.headers['Authorization'];
+        if (auth && (auth.includes('null') || auth.includes('undefined'))) {
+            delete config.headers['Authorization'];
+        }
+        return config;
+    },
+    (error) => Promise.reject(error)
+);
+
 api.interceptors.response.use(
     (response) => response,
     async (error) => {
