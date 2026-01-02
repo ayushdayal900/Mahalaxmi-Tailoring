@@ -12,9 +12,7 @@ const CustomerOrders = () => {
     useEffect(() => {
         const fetchOrders = async () => {
             try {
-                const token = localStorage.getItem('token');
-                const config = { headers: { Authorization: `Bearer ${token}` } };
-                const res = await api.get('/orders/myorders', config);
+                const res = await api.get('/orders/myorders');
                 setOrders(res.data);
             } catch (error) {
                 console.error("Error fetching orders:", error);
