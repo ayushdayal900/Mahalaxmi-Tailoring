@@ -23,11 +23,12 @@ api.interceptors.response.use(
                 const res = await api.get('/auth/refresh');
                 const newAccessToken = res.data.token;
 
-                // Update default header
-                api.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`;
-                originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
-
-                return api(originalRequest);
+                if (newAccessToken) {
+                    // Update default header
+                    api.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`;
+                    originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
+                    return api(originalRequest);
+                }
             } catch (refreshError) {
                 // Refresh failed - User must login again
                 document.dispatchEvent(new Event('auth:logout'));
