@@ -115,6 +115,7 @@ exports.loginUser = async (req, res) => {
 exports.refresh = async (req, res) => {
     const cookies = req.cookies;
     console.log('DEBUG: Refresh Route Hit');
+    console.log('DEBUG: Body Recieved:', req.body);
     // console.log('DEBUG: Cookies:', cookies ? Object.keys(cookies) : 'None');
 
     let refreshToken = cookies?.jwt;

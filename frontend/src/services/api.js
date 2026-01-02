@@ -32,6 +32,7 @@ api.interceptors.response.use(
             try {
                 // Attempt to refresh token
                 const storedRefreshToken = localStorage.getItem('refreshToken');
+                console.log('DEBUG: Frontend Interceptor - Refresh Token:', storedRefreshToken ? 'Present' : 'Missing');
                 const res = await api.post('/auth/refresh', { refreshToken: storedRefreshToken });
                 const newAccessToken = res.data.token;
 
