@@ -44,14 +44,8 @@ const CustomerDashboard = () => {
     };
 
     const fetchUserData = async () => {
-        // Assuming AuthContext user might not always be fresh, or we want to refresh addresses specifically.
-        // Actually, fetching 'me' is safe.
         try {
-            const token = localStorage.getItem('token');
-            if (!token) return;
-
-            const config = { headers: { Authorization: `Bearer ${token} ` } };
-            const res = await api.get('/auth/me', config);
+            const res = await api.get('/auth/me');
             if (res.data.addresses) {
                 setAddresses(res.data.addresses);
             }
@@ -62,9 +56,7 @@ const CustomerDashboard = () => {
 
     const fetchMeasurements = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const config = { headers: { Authorization: `Bearer ${token} ` } };
-            const res = await api.get('/customers/measurements', config);
+            const res = await api.get('/customers/measurements');
             setMeasurements(res.data);
         } catch (error) {
             console.log("No measurements found or error fetching");
@@ -90,9 +82,7 @@ const CustomerDashboard = () => {
 
     const fetchAllOrders = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const config = { headers: { Authorization: `Bearer ${token} ` } };
-            const res = await api.get('/orders/myorders', config);
+            const res = await api.get('/orders/myorders');
             setAllOrders(res.data);
         } catch (error) {
             console.error("Error fetching orders", error);
@@ -101,10 +91,7 @@ const CustomerDashboard = () => {
 
     const fetchDashboardData = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const config = { headers: { Authorization: `Bearer ${token} ` } };
-            const ordersRes = await api.get('/orders/myorders', config);
-
+            const ordersRes = await api.get('/orders/myorders');
             const orders = ordersRes.data;
             const active = orders.filter(o => o.status !== 'completed' && o.status !== 'cancelled').length;
             const spent = orders.reduce((acc, curr) => acc + curr.totalAmount, 0);
@@ -119,9 +106,7 @@ const CustomerDashboard = () => {
     const handleDeleteAddress = async (id) => {
         if (!window.confirm('Are you sure using want to delete this address?')) return;
         try {
-            const token = localStorage.getItem('token');
-            const config = { headers: { Authorization: `Bearer ${token} ` } };
-            const res = await api.delete(`/ customers / address / ${id} `, config);
+            const res = await api.delete(`/customers/address/${id}`);
             setAddresses(res.data); // Returns updated list
         } catch (error) {
             console.error("Error deleting address", error);
@@ -176,8 +161,8 @@ const CustomerDashboard = () => {
                     <button
                         onClick={() => handleTabChange('overview')}
                         className={`w-full flex items-center gap-4 px-6 py-4 rounded-xl transition-all duration-300 font-medium ${activeTab === 'overview'
-                                ? 'bg-brand-maroon text-white shadow-lg shadow-brand-maroon/20 translate-x-2'
-                                : 'text-gray-600 hover:bg-gray-50 hover:pl-8'
+                            ? 'bg-brand-maroon text-white shadow-lg shadow-brand-maroon/20 translate-x-2'
+                            : 'text-gray-600 hover:bg-gray-50 hover:pl-8'
                             }`}
                     >
                         <User size={20} className={activeTab === 'overview' ? 'opacity-100' : 'opacity-70'} />
@@ -187,8 +172,8 @@ const CustomerDashboard = () => {
                     <button
                         onClick={() => handleTabChange('orders')}
                         className={`w-full flex items-center gap-4 px-6 py-4 rounded-xl transition-all duration-300 font-medium ${activeTab === 'orders'
-                                ? 'bg-brand-maroon text-white shadow-lg shadow-brand-maroon/20 translate-x-2'
-                                : 'text-gray-600 hover:bg-gray-50 hover:pl-8'
+                            ? 'bg-brand-maroon text-white shadow-lg shadow-brand-maroon/20 translate-x-2'
+                            : 'text-gray-600 hover:bg-gray-50 hover:pl-8'
                             }`}
                     >
                         <Package size={20} className={activeTab === 'orders' ? 'opacity-100' : 'opacity-70'} />
@@ -198,8 +183,8 @@ const CustomerDashboard = () => {
                     <button
                         onClick={() => handleTabChange('measurements')}
                         className={`w-full flex items-center gap-4 px-6 py-4 rounded-xl transition-all duration-300 font-medium ${activeTab === 'measurements'
-                                ? 'bg-brand-maroon text-white shadow-lg shadow-brand-maroon/20 translate-x-2'
-                                : 'text-gray-600 hover:bg-gray-50 hover:pl-8'
+                            ? 'bg-brand-maroon text-white shadow-lg shadow-brand-maroon/20 translate-x-2'
+                            : 'text-gray-600 hover:bg-gray-50 hover:pl-8'
                             }`}
                     >
                         <Ruler size={20} className={activeTab === 'measurements' ? 'opacity-100' : 'opacity-70'} />
@@ -218,8 +203,8 @@ const CustomerDashboard = () => {
                     <button
                         onClick={() => handleTabChange('addresses')}
                         className={`w-full flex items-center gap-4 px-6 py-4 rounded-xl transition-all duration-300 font-medium ${activeTab === 'addresses'
-                                ? 'bg-brand-maroon text-white shadow-lg shadow-brand-maroon/20 translate-x-2'
-                                : 'text-gray-600 hover:bg-gray-50 hover:pl-8'
+                            ? 'bg-brand-maroon text-white shadow-lg shadow-brand-maroon/20 translate-x-2'
+                            : 'text-gray-600 hover:bg-gray-50 hover:pl-8'
                             }`}
                     >
                         <MapPin size={20} className={activeTab === 'addresses' ? 'opacity-100' : 'opacity-70'} />
@@ -229,8 +214,8 @@ const CustomerDashboard = () => {
                     <button
                         onClick={() => handleTabChange('profile')}
                         className={`w-full flex items-center gap-4 px-6 py-4 rounded-xl transition-all duration-300 font-medium ${activeTab === 'profile'
-                                ? 'bg-brand-maroon text-white shadow-lg shadow-brand-maroon/20 translate-x-2'
-                                : 'text-gray-600 hover:bg-gray-50 hover:pl-8'
+                            ? 'bg-brand-maroon text-white shadow-lg shadow-brand-maroon/20 translate-x-2'
+                            : 'text-gray-600 hover:bg-gray-50 hover:pl-8'
                             }`}
                     >
                         <Settings size={20} className={activeTab === 'profile' ? 'opacity-100' : 'opacity-70'} />
