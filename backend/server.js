@@ -35,6 +35,8 @@ app.use(cors({
         'http://localhost:5176',
         'https://mahalaxmi-tailoring.vercel.app', // Vercel App
         'https://main.d10dcrvma98p9c.amplifyapp.com', // AWS Amplify App
+        'https://mahalaxmi-tailors.shop', // Custom Domain
+        'https://www.mahalaxmi-tailors.shop', // Custom Domain (www)
         process.env.FRONTEND_URL
     ].filter(Boolean),
     credentials: true // Allow cookies
