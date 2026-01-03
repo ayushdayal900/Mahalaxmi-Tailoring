@@ -19,17 +19,25 @@ exports.submitContact = async (req, res) => {
             message
         });
 
+        const { getEmailTemplate } = require('../utils/emailTemplates');
+
         // Send Email to Admin/Support
         try {
             await sendEmail({
                 email: process.env.CONTACT_EMAIL || process.env.SES_FROM_EMAIL, // Send TO business owner
                 subject: `New Contact Inquiry from ${name}`,
                 message: `You have received a new message from ${name} (${email}, ${phone}):\n\n${message}`,
-                html: `<h3>New Contact Inquiry</h3>
-                       <p><strong>Name:</strong> ${name}</p>
-                       <p><strong>Email:</strong> ${email}</p>
-                       <p><strong>Phone:</strong> ${phone}</p>
-                       <p><strong>Message:</strong><br/>${message}</p>`
+                html: getEmailTemplate(
+                    'New Contact Inquiry',
+                    `<p><strong>From:</strong> ${name}</p>
+                     <p><strong>Email:</strong> ${email}</p>
+                     <p><strong>Phone:</strong> ${phone}</p>
+                     <hr/>
+                     <p><strong>Message:</strong></p>
+                     <p style="background-color: #f1f1f1; padding: 10px; border-radius: 4px;">${message}</p>`,
+                    'mailto:' + email,
+                    'Reply to Customer'
+                )
             });
         } catch (emailError) {
             console.error('Contact email failed:', emailError);
