@@ -1,6 +1,8 @@
 const Order = require('../models/Order');
 const Product = require('../models/Product');
 
+const sendEmail = require('../utils/sendEmail');
+
 // @desc    Create new order
 // @route   POST /api/orders
 // @access  Private
@@ -53,6 +55,20 @@ exports.createOrder = async (req, res) => {
         });
 
         const createdOrder = await order.save();
+
+        // Send Confirmation Email
+        try {
+            await sendEmail({
+                email: req.user.email,
+                subject: `Order Confirmation - ${orderNumber}`,
+                message: `Thank you for your order! Your order ID is ${orderNumber}. We will notify you once it ships.`,
+                html: `<h1>Thank You!</h1><p>Your order <strong>${orderNumber}</strong> has been placed successfully.</p><p>Total Amount: ₹${totalAmount}</p>`
+            });
+        } catch (emailError) {
+            console.error('Email sending failed:', emailError);
+            // Continue without failing the request
+        }
+
         res.status(201).json(createdOrder);
 
     } catch (error) {

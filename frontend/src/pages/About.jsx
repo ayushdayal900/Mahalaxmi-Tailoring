@@ -7,7 +7,7 @@ const About = () => {
     const { t } = useTranslation();
 
     return (
-        <div className="pt-20 pb-12 bg-gray-50 min-h-screen">
+        <div className="pt-4 pb-12 bg-gray-50 min-h-screen">
             <div className="container mx-auto px-4">
 
                 {/* Hero Section */}

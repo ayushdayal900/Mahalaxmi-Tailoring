@@ -56,7 +56,7 @@ const Gallery = () => {
     if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><Loader className="animate-spin text-brand-maroon" size={40} /></div>;
 
     return (
-        <div className="pt-20 pb-12 bg-gray-50 min-h-screen">
+        <div className="pt-4 pb-12 bg-gray-50 min-h-screen">
             <div className="container mx-auto px-4">
                 <div className="text-center mb-12">
                     <h1 className="text-4xl font-serif font-bold text-brand-maroon mb-4">Customer Gallery</h1>

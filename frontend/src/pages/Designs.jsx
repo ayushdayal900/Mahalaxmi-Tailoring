@@ -103,7 +103,7 @@ const Designs = () => {
 
 
     return (
-        <div className="bg-brand-ivory min-h-screen pt-20 pb-12">
+        <div className="bg-brand-ivory min-h-screen pt-4 pb-12">
             <div className="container mx-auto px-4">
 
                 {/* Header */}
