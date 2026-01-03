@@ -56,13 +56,22 @@ exports.createOrder = async (req, res) => {
 
         const createdOrder = await order.save();
 
+        const { getEmailTemplate } = require('../utils/emailTemplates');
+
         // Send Confirmation Email
         try {
             await sendEmail({
                 email: req.user.email,
                 subject: `Order Confirmation - ${orderNumber}`,
                 message: `Thank you for your order! Your order ID is ${orderNumber}. We will notify you once it ships.`,
-                html: `<h1>Thank You!</h1><p>Your order <strong>${orderNumber}</strong> has been placed successfully.</p><p>Total Amount: ₹${totalAmount}</p>`
+                html: getEmailTemplate(
+                    'Order Confirmed!',
+                    `<p>Thank you for shopping with us. Your order <strong>${orderNumber}</strong> has been received.</p>
+                     <p><strong>Total Amount:</strong> ₹${totalAmount}</p>
+                     <p>We will notify you once your stitching begins!</p>`,
+                    'https://mahalaxmi-tailors.shop/customer/dashboard',
+                    'View Order'
+                )
             });
         } catch (emailError) {
             console.error('Email sending failed:', emailError);
