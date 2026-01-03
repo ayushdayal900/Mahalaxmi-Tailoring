@@ -24,6 +24,8 @@ const cookieOptions = {
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
 };
 
+const sendEmail = require('../utils/sendEmail');
+
 // @desc    Register new user
 // @route   POST /api/auth/register
 // @access  Public
@@ -56,6 +58,18 @@ exports.registerUser = async (req, res) => {
 
             // Send Refresh Token in Cookie
             res.cookie('jwt', refreshToken, cookieOptions);
+
+            // Send Welcome Email
+            try {
+                await sendEmail({
+                    email: user.email,
+                    subject: 'Welcome to Mahalaxmi Tailors',
+                    message: `Hi ${user.firstName}, welcome to Mahalaxmi Tailors! We're excited to have you on board.`,
+                    html: `<h1>Welcome ${user.firstName}!</h1><p>Thank you for joining Mahalaxmi Tailors.</p>`
+                });
+            } catch (emailError) {
+                console.error('Welcome email failed:', emailError);
+            }
 
             res.status(201).json({
                 _id: user.id,

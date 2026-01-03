@@ -41,7 +41,17 @@ app.use(cors({
 }));
 app.use(compression()); // Compress all responses
 app.use(cookieParser()); // Parse cookies
-app.use(morgan('dev')); // Log requests
+const logger = require('./utils/logger');
+
+// Define the stream function for morgan
+const stream = {
+    write: (message) => {
+        // Use the 'info' log level so the output will be picked up by both transports (file and console)
+        logger.http(message.trim());
+    },
+};
+
+app.use(morgan('combined', { stream })); // Log requests to winston
 app.use(express.json()); // Parse JSON bodies
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
 
