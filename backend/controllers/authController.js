@@ -176,6 +176,43 @@ exports.logout = (req, res) => {
     res.json({ message: 'Cookie cleared' });
 };
 
+// @desc    Update user details
+// @route   PUT /api/auth/updatedetails
+// @access  Private
+exports.updateDetails = async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+
+        if (user) {
+            user.firstName = req.body.firstName || user.firstName;
+            user.lastName = req.body.lastName || user.lastName;
+            user.phone = req.body.phone || user.phone;
+
+            if (req.body.password) {
+                const salt = await bcrypt.genSalt(10);
+                user.password = await bcrypt.hash(req.body.password, salt);
+            }
+
+            const updatedUser = await user.save();
+
+            res.json({
+                _id: updatedUser._id,
+                firstName: updatedUser.firstName,
+                lastName: updatedUser.lastName,
+                email: updatedUser.email,
+                phone: updatedUser.phone,
+                role: updatedUser.role,
+                token: generateAccessToken(updatedUser._id)
+            });
+        } else {
+            res.status(404).json({ message: 'User not found' });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
 // @desc    Get user data
 // @route   GET /api/auth/me
 // @access  Private
