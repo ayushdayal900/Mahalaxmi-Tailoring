@@ -10,7 +10,7 @@ import MeasurementTab from '../components/Dashboard/MeasurementTab'; // New Comp
 import AddressForm from '../components/Dashboard/AddressForm';
 
 const CustomerDashboard = () => {
-    const { user, logout } = useContext(AuthContext);
+    const { user, logout, updateUser } = useContext(AuthContext);
     const [activeTab, setActiveTab] = useState('overview');
     const [measurements, setMeasurements] = useState(null);
     const [addresses, setAddresses] = useState([]);
@@ -39,8 +39,29 @@ const CustomerDashboard = () => {
 
     const handleProfileUpdate = async (e) => {
         e.preventDefault();
-        alert("Profile Update Feature Implementation: This would call PUT /api/customers/profile with new data.");
-        // In real impl: await axios.put(...)
+        try {
+            const payload = {
+                firstName: profileData.firstName,
+                lastName: profileData.lastName,
+                phone: profileData.phone,
+            };
+            if (profileData.newPassword) {
+                payload.password = profileData.newPassword;
+            }
+
+            const res = await api.put('/auth/updatedetails', payload);
+
+            // Update Context
+            updateUser(res.data);
+
+            // Update Local State for password fields
+            setProfileData(prev => ({ ...prev, currentPassword: '', newPassword: '' }));
+
+            alert("Profile updated successfully!");
+        } catch (error) {
+            console.error("Update failed", error);
+            alert(error.response?.data?.message || "Failed to update profile");
+        }
     };
 
     const fetchUserData = async () => {

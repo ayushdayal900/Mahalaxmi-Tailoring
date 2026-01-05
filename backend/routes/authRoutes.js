@@ -8,5 +8,6 @@ router.post('/login', loginUser);
 router.post('/refresh', refresh);
 router.post('/logout', logout);
 router.get('/me', protect, getMe);
+router.put('/updatedetails', protect, require('../controllers/authController').updateDetails);
 
 module.exports = router;
