@@ -195,14 +195,6 @@ const CustomerDashboard = () => {
                         Measurements
                     </button>
 
-                    <Link
-                        to="/wishlist"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className={`w-full flex items-center gap-4 px-6 py-4 rounded-xl transition-all duration-300 font-medium text-gray-600 hover:bg-gray-50 hover:pl-8`}
-                    >
-                        <Heart size={20} className="opacity-70" />
-                        My Wishlist
-                    </Link>
 
                     <button
                         onClick={() => handleTabChange('addresses')}
