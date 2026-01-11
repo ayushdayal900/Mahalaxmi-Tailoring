@@ -41,7 +41,8 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions)); // Handle preflight requests explicitly
+app.use(cors(corsOptions));
+// app.options('*', cors(corsOptions)); // Removed to fix Express 5 PathError - cors middleware handles preflight automatically
 
 // Security Middleware
 app.use(helmet({
