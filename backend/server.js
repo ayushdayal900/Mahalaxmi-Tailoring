@@ -16,18 +16,14 @@ const app = express();
 app.set('trust proxy', 1); // Required for Render/Heroku deployment
 const PORT = process.env.PORT || 5000;
 
-// Security Middleware
-app.use(helmet({
-    crossOriginResourcePolicy: { policy: "cross-origin" },
-    contentSecurityPolicy: {
-        directives: {
-            defaultSrc: ["'self'"],
-            imgSrc: ["'self'", "data:", "https://res.cloudinary.com", "https://*.cloudinary.com"],
-            scriptSrc: ["'self'", "'unsafe-inline'"],
-        }
-    }
-}));
-app.use(cors({
+// Logging Middleware for Debugging CORS
+app.use((req, res, next) => {
+    console.log(`[Request] ${req.method} ${req.path} | Origin: ${req.headers.origin}`);
+    next();
+});
+
+// CORS Middleware - MUST BE FIRST
+const corsOptions = {
     origin: [
         'http://localhost:5173',
         'http://localhost:5174',
@@ -39,7 +35,24 @@ app.use(cors({
         'https://www.mahalaxmi-tailors.shop', // Custom Domain (www)
         process.env.FRONTEND_URL
     ].filter(Boolean),
-    credentials: true // Allow cookies
+    credentials: true, // Allow cookies
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // Handle preflight requests explicitly
+
+// Security Middleware
+app.use(helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            imgSrc: ["'self'", "data:", "https://res.cloudinary.com", "https://*.cloudinary.com"],
+            scriptSrc: ["'self'", "'unsafe-inline'"],
+        }
+    }
 }));
 app.use(compression()); // Compress all responses
 app.use(cookieParser()); // Parse cookies
