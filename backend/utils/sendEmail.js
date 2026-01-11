@@ -26,9 +26,17 @@ const sendEmail = async (options) => {
     html: options.html, // Support for HTML emails
   };
 
-  const info = await transporter.sendMail(message);
-
-  console.log('Message sent: %s', info.messageId);
+  try {
+    const info = await transporter.sendMail(message);
+    console.log('Message sent: %s', info.messageId);
+    return info;
+  } catch (error) {
+    console.error('Error sending email:', error);
+    // Don't throw the error, just log it so the main flow continues
+    // or you could throw it if you want the controller to handle it explicitly.
+    // For now, let's return null to indicate failure but keep process alive.
+    return null;
+  }
 };
 
 module.exports = sendEmail;
