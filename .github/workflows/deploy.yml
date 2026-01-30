@@ -45,7 +45,7 @@ jobs:
 
       - name: Install & Build Frontend
         env:
-          VITE_API_URL: https://api.mahalaxmi-tailors.shop
+          VITE_API_URL: https://api.mahalaxmi-tailors.shop/api
         run: |
           cd frontend
           npm install
