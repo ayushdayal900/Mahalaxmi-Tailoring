@@ -30,3 +30,39 @@ jobs:
             
             # Restart Application (Zero-Downtime Reload)
             pm2 reload ecosystem.config.js --env production || pm2 restart mahalaxmi-backend
+
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    needs: deploy # Optional: Run after backend, or remove to run in parallel
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install & Build Frontend
+        env:
+          VITE_API_URL: https://api.mahalaxmi-tailors.shop
+        run: |
+          cd frontend
+          npm install
+          npm run build
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+
+      - name: Deploy to S3
+        run: |
+          aws s3 sync frontend/dist s3://mahalaxmi-frontend-prod --delete
+
+      - name: Invalidate CloudFront (Optional)
+        if: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
+        run: |
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
