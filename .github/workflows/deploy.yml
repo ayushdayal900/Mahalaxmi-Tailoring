@@ -6,19 +6,27 @@ on:
       - main
 
 jobs:
-  deploy:
+  deploy-backend:
     runs-on: ubuntu-latest
 
     steps:
+
+      # This downloads your GitHub repo code into the runner machine. 
+      # Without this, the workflow can't access your project files.
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      # This uses a GitHub Action that connects to your EC2 server using SSH. 
+      # It pulls the latest code and restarts the backend application using PM2.    
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.0
+
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
+
+          # Everything below this runs inside your EC2 machine.
           script: |
             # Navigate to repo
             cd /home/ubuntu/Mahalaxmi-Tailoring
@@ -33,7 +41,8 @@ jobs:
 
   deploy-frontend:
     runs-on: ubuntu-latest
-    needs: deploy # Optional: Run after backend, or remove to run in parallel
+    needs: deploy-backend 
+    
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
