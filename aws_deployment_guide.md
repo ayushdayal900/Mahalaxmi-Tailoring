@@ -1,175 +1,471 @@
-# 🚀 AWS MERN Deployment Guide
+# 🚀 AWS Deployment Guide — Mahalaxmi Tailors
 
-This guide lists the step-by-step instructions to deploy your MERN application to AWS.
-**Backend**: EC2 (Ubuntu) running Node.js + PM2 + Nginx.
-**Frontend**: S3 (Hosting) + CloudFront (CDN + SSL).
+**Stack**: MongoDB Atlas · Node.js/Express on EC2 · React on AWS Amplify · CloudFront CDN · Route 53 DNS · IAM Security
 
 ---
 
-## 🏗️ Phase 1: Backend Deployment (EC2)
+## 📋 Table of Contents
+1. [IAM Setup (Security First)](#1-iam-setup)
+2. [Phase 1: Backend on EC2](#2-phase-1-backend-ec2)
+3. [Phase 2: Frontend on AWS Amplify](#3-phase-2-frontend-amplify)
+4. [Phase 3: CloudFront CDN](#4-phase-3-cloudfront)
+5. [Phase 4: Domain & DNS on Route 53](#5-phase-4-route-53)
+6. [Phase 5: CI/CD with GitHub Actions](#6-phase-5-cicd)
+7. [Recommended Additional Services](#7-recommended-services)
+8. [Environment Variables Reference](#8-env-reference)
 
-### 1. Launch EC2 Instance
-1.  Log in to AWS Console -> **EC2** -> **Launch Instance**.
-2.  **Name**: `Mahalaxmi-Tailors-Backend`
-3.  **OS Image**: **Ubuntu Server 24.04 LTS**.
-4.  **Instance Type**: `t2.micro` (Free Tier eligible) or `t3.small` (Recommended for better performance).
-5.  **Key Pair**: Create a new key pair (`mahalaxmi-key`), download the `.pem` file.
-6.  **Network Settings**:
-    *   Allow SSH (Port 22) from `My IP`.
-    *   Allow HTTP (Port 80) from `Anywhere`.
-    *   Allow HTTPS (Port 443) from `Anywhere`.
-7.  **Launch**.
+---
 
-### 2. Setup Server Environment
-Open your terminal (in VS Code or PowerShell) where your `.pem` key is located.
+## 1. IAM Setup (Security First) <a name="1-iam-setup"></a>
+
+> ⚠️ **IMPORTANT**: Never use the AWS Root account for deployments. Always use IAM users/roles with minimum permissions.
+
+### 1.1 Create a Deployment IAM User (for GitHub Actions CI/CD)
+
+1. Go to **AWS Console → IAM → Users → Create User**
+2. **User name**: `mahalaxmi-deploy-bot`
+3. **Permissions**: Attach these policies directly:
+   - `AmazonS3FullAccess` (for Amplify build artifacts and static assets)
+   - `CloudFrontFullAccess` (to invalidate CDN cache on deploy)
+   - `AmazonSESFullAccess` (for sending emails from EC2)
+   - `AWSAmplifyFullAccess` (for triggering Amplify deployments)
+4. After creating: go to **Security Credentials → Create Access Key** → choose **"Application running outside AWS"**
+5. Save `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` — add them to **GitHub Secrets** (never commit them!)
+
+### 1.2 Create an EC2 IAM Role (for SES email sending from the server)
+
+1. Go to **IAM → Roles → Create Role**
+2. **Trusted Entity**: AWS Service → **EC2**
+3. **Permissions**: Attach `AmazonSESFullAccess`
+4. **Name**: `Mahalaxmi-EC2-Role`
+5. After launching EC2 (Step 2), attach this role to the instance.
+   - EC2 → Select instance → **Actions → Security → Modify IAM Role**
+   - This way your EC2 server can send emails **without storing AWS keys in `.env`** on the server.
+
+---
+
+## 2. Phase 1: Backend on EC2 <a name="2-phase-1-backend-ec2"></a>
+
+### 2.1 Launch EC2 Instance
+
+1. Go to **AWS Console → EC2 → Launch Instance**
+2. Settings:
+   | Setting | Value |
+   |---|---|
+   | **Name** | `Mahalaxmi-Backend` |
+   | **AMI** | Ubuntu Server 24.04 LTS |
+   | **Instance Type** | `t3.small` (recommended) or `t2.micro` (free tier) |
+   | **Key Pair** | Create new: `mahalaxmi-key.pem` — download and save it |
+3. **Network & Security Group** — allow these inbound rules:
+   | Type | Protocol | Port | Source |
+   |---|---|---|---|
+   | SSH | TCP | 22 | My IP (your current IP only) |
+   | HTTP | TCP | 80 | Anywhere (0.0.0.0/0) |
+   | HTTPS | TCP | 443 | Anywhere (0.0.0.0/0) |
+   | Custom TCP | TCP | 5000 | 0.0.0.0/0 (temporary for testing only) |
+4. **IAM Instance Profile**: Select `Mahalaxmi-EC2-Role` (created in step 1.2)
+5. **Launch Instance** — note the **Public IPv4 address**.
+
+### 2.2 Connect to EC2
 
 ```bash
-# Set permissions (only if using Git Bash/Mac/Linux, skip for Windows PowerShell)
-chmod 400 mahalaxmi-key.pem
-
-# Connect (Replace 1.2.3.4 with your EC2 Public IP)
-ssh -i mahalaxmi-key.pem ubuntu@1.2.3.4
+# On Windows PowerShell (from the folder where your .pem file is)
+ssh -i "mahalaxmi-key.pem" ubuntu@<YOUR_EC2_PUBLIC_IP>
 ```
+> 💡 On Windows, if permissions error occurs: right-click `.pem` → Properties → Security → Advanced → Remove inheritance, then give yourself "Full Control" only.
 
-Run these commands inside the EC2 terminal:
+### 2.3 Setup Server Environment
+
+Run these commands **inside the EC2 terminal**:
 
 ```bash
-# Update System
+# 1. Update system packages
 sudo apt update && sudo apt upgrade -y
 
-# Install Node.js (v20)
+# 2. Install Node.js v20 (LTS)
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt install -y nodejs
 
-# Install Nginx
-sudo apt install -y nginx
+# Verify versions
+node -v   # Should be v20.x.x
+npm -v    # Should be 10.x.x
 
-# Install PM2 (Process Manager)
+# 3. Install Nginx (reverse proxy)
+sudo apt install -y nginx
+sudo systemctl enable nginx
+sudo systemctl start nginx
+
+# 4. Install PM2 (process manager — keeps Node running 24/7)
 sudo npm install -g pm2
+
+# 5. Install Git
+sudo apt install -y git
 ```
 
-### 3. Deploy Backend Code
+### 2.4 Deploy Backend Code
+
 ```bash
-# Clone Repository
-git clone https://github.com/ayushdayal900/Mothers-s-Tailoring.git
-cd Mothers-s-Tailoring/backend
+# Clone your GitHub repository
+git clone https://github.com/ayushdayal900/Mahalaxmi-Tailoring.git
+cd Mahalaxmi-Tailoring/backend
 
-# Install Dependencies
-npm install
+# Install dependencies
+npm install --production
 
-# Create Environment File
+# Create production .env file
 nano .env
 ```
-👉 **Paste your production `.env` variables here.** (Use right-click to paste).
-Make sure `NODE_ENV=production`.
-Press `Ctrl+X`, then `Y`, then `Enter` to save.
 
-### 4. Start Backend with PM2
-I have already added `ecosystem.config.js` to your project.
+**Paste these values** into the `.env` file (edit with your actual values):
+```env
+PORT=5000
+NODE_ENV=production
+MONGODB_URI=mongodb://admin:PASSWORD@ac-xxx-shard-00-00.mongodb.net:27017,...?ssl=true&replicaSet=...&authSource=admin&retryWrites=true&w=majority
+JWT_SECRET=your_super_long_random_jwt_secret_here
+
+# Razorpay
+RAZORPAY_KEY_ID=your_razorpay_key_id
+RAZORPAY_KEY_SECRET=your_razorpay_key_secret
+
+# Cloudinary
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+
+# AWS SES (no keys needed — EC2 IAM Role handles auth)
+SES_FROM_NAME=Mahalaxmi Tailors
+SES_FROM_EMAIL=noreply@mahalaxmi-tailors.shop
+CONTACT_EMAIL=support@mahalaxmi-tailors.shop
+AWS_REGION=ap-south-1
+
+# Frontend URL (for CORS)
+FRONTEND_URL=https://www.mahalaxmi-tailors.shop
+```
+Press `Ctrl+X` → `Y` → `Enter` to save.
+
+### 2.5 Start Backend with PM2
+
 ```bash
-# Start the app
+# Go to the backend directory
+cd /home/ubuntu/Mahalaxmi-Tailoring/backend
+
+# Start the app using ecosystem.config.js
 pm2 start ecosystem.config.js --env production
 
-# Save the process list so it restarts on reboot
+# Save the process list (auto-restart on reboot)
 pm2 save
+
+# Setup PM2 startup script — run the command it outputs
 pm2 startup
-# (Run the command output by pm2 startup)
+# Copy-paste the sudo command it prints, then run it
+
+# Check status
+pm2 status
+pm2 logs mahalaxmi-backend
 ```
 
-### 5. Configure Nginx (Reverse Proxy)
+### 2.6 Configure Nginx (Reverse Proxy)
+
 ```bash
 # Remove default config
 sudo rm /etc/nginx/sites-enabled/default
 
-# Create new config
+# Create config for your app
 sudo nano /etc/nginx/sites-available/mahalaxmi
 ```
-**Paste this configuration**:
+
+Paste this configuration:
 ```nginx
 server {
     listen 80;
-    server_name api.mahalaxmi-tailors.shop; # 👈 REPLACE WITH YOUR DOMAIN
+    server_name api.mahalaxmi-tailors.shop;
 
+    # Proxy to Node.js backend
     location / {
-        proxy_pass http://localhost:5000; # Assuming your backend runs on 5000
+        proxy_pass http://localhost:5000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
         proxy_cache_bypass $http_upgrade;
     }
+
+    # Increase upload limit for images
+    client_max_body_size 10M;
 }
 ```
-**Enable the site:**
+
 ```bash
+# Enable the site
 sudo ln -s /etc/nginx/sites-available/mahalaxmi /etc/nginx/sites-enabled/
+
+# Test configuration
 sudo nginx -t
+
+# Reload Nginx
 sudo systemctl restart nginx
 ```
 
----
+### 2.7 Install SSL Certificate (HTTPS)
 
-## 🎨 Phase 2: Frontend Deployment (S3 + CloudFront)
+```bash
+# Install Certbot
+sudo apt install -y certbot python3-certbot-nginx
 
-### 1. Build Frontend Source
-Run this **on your local machine**:
-```powershell
-cd d:\Projects\Mahalxmi-Tailors\frontend
+# Get SSL certificate (replace with your actual domain)
+# Do this AFTER setting up DNS in Route 53 (Phase 4 first)
+sudo certbot --nginx -d api.mahalaxmi-tailors.shop
 
-# Ensure VITE_API_URL points to your EC2/Domain
-# Example in .env.production: VITE_API_URL=https://api.mahalaxmi-tailors.shop
-
-npm run build
+# Certbot will auto-renew — verify the timer is active
+sudo systemctl status certbot.timer
 ```
-This creates a `dist` folder.
 
-### 2. Upload to S3
-1.  AWS Console -> **S3** -> **Create Bucket**.
-2.  **Name**: `mahalaxmi-frontend-prod` (must be unique).
-3.  **Uncheck** "Block all public access" (We will secure it via Policy or CloudFront, but for simple hosting, unblocking is easiest initially, OR preferably keep blocked and use CloudFront OAC).
-    *   *Recommendation*: Keep "Block all public access" **ON** and use **CloudFront**.
-4.  **Create Bucket**.
-5.  Upload the **contents** of the `dist` folder to the root of the bucket.
-
-### 3. Configure CloudFront (CDN & SSL)
-1.  AWS Console -> **CloudFront** -> **Create Distribution**.
-2.  **Origin Domain**: Select your S3 bucket.
-3.  **Origin Access**: choose **Origin access control settings (recommended)**.
-    *   Create control setting (default verified).
-    *   **IMPORTANT**: After creating distribution, AWS will give you a Policy Statement to copy into your S3 Bucket Policy.
-4.  **Viewer Protocol Policy**: Redirect HTTP to HTTPS.
-5.  **Price Class**: Use North America and Europe (Cheapest) or All Edge Locations (Best Performance).
-6.  **Create Distribution**.
-
-### 4. Update S3 Policy (for CloudFront Access)
-1.  Go back to your S3 Bucket -> Permissions -> **Bucket Policy**.
-2.  Paste the policy provided by CloudFront (it allows CloudFront to read your files).
-
-### 5. Handle React Routing (SPA)
-In CloudFront -> **Error Pages**:
-*   Create Custom Error Response.
-*   **HTTP Error Code**: `403` (and `404`).
-*   **Customize Error Response**: Yes.
-*   **Response Page Path**: `/index.html`.
-*   **HTTP Response Code**: `200`.
-*   *This ensures refreshing a page like /contact works.*
+### 2.8 Remove Port 5000 from Security Group
+After confirming Nginx + SSL is working, go back to **EC2 → Security Groups** and **delete the inbound rule for port 5000** (no direct access to Node.js from the internet).
 
 ---
 
-## 🌐 Phase 3: Domain & SSL (Route 53)
+## 3. Phase 2: Frontend on AWS Amplify <a name="3-phase-2-frontend-amplify"></a>
 
-1.  **Backend SSL (Certbot)**:
-    On EC2:
-    ```bash
-    sudo apt install certbot python3-certbot-nginx -y
-    sudo certbot --nginx -d api.mahalaxmi-tailors.shop
-    ```
-2.  **Frontend Custom Domain**:
-    *   In CloudFront settings, add Alternate Domain Name (CNAME): `www.mahalaxmi-tailors.shop`.
-    *   Request an SSL certificate in AWS ACM (us-east-1 region) and attach it.
-3.  **DNS Records (Route 53 or your provider)**:
-    *   `api.mahalaxmi-tailors.shop` -> A Record -> EC2 Public IP.
-    *   `www.mahalaxmi-tailors.shop` -> CNAME -> CloudFront Distribution Domain (`d1234.cloudfront.net`).
+AWS Amplify auto-builds and deploys your React app on every push to `main`. It handles hosting, SSL, and CDN automatically.
+
+### 3.1 Connect Amplify to GitHub
+
+1. Go to **AWS Console → AWS Amplify → New App → Host Web App**
+2. **Source**: GitHub → **Authorize AWS Amplify**
+3. **Repository**: `ayushdayal900/Mahalaxmi-Tailoring`
+4. **Branch**: `main`
+
+### 3.2 Configure Build Settings
+
+When prompted for build settings, use this configuration:
+
+```yaml
+version: 1
+applications:
+  - frontend:
+      phases:
+        preBuild:
+          commands:
+            - cd frontend
+            - npm install
+        build:
+          commands:
+            - npm run build
+      artifacts:
+        baseDirectory: frontend/dist
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - frontend/node_modules/**/*
+    appRoot: frontend
+```
+
+### 3.3 Set Environment Variables in Amplify
+
+In **Amplify → App → Environment Variables**, add:
+
+| Key | Value |
+|---|---|
+| `VITE_API_URL` | `https://api.mahalaxmi-tailors.shop/api` |
+| `NODE_ENV` | `production` |
+
+### 3.4 Configure Amplify for React Router (SPA)
+
+1. Go to **Amplify → Rewrites and Redirects**
+2. Add this rule:
+   | Source Address | Target Address | Type |
+   |---|---|---|
+   | `</^[^.]+$\|\.(?!(css\|gif\|ico\|jpg\|js\|png\|txt\|svg\|woff\|woff2\|ttf\|map\|json)$)([^.]+$)/>` | `/index.html` | `200 (Rewrite)` |
+3. This ensures React Router works on page refresh (e.g. `/contact`, `/admin`).
+
+### 3.5 Get Your Amplify Domain
+After the first deployment, Amplify gives you a URL like:
+`https://main.d1234abcd.amplifyapp.com`
+
+Note this — you'll need it for Route 53 and CORS.
 
 ---
-**🎉 Deployment Complete!**
+
+## 4. Phase 3: CloudFront CDN <a name="4-phase-3-cloudfront"></a>
+
+> **Note**: If you're using **AWS Amplify**, it already includes a built-in CDN and SSL. You can skip this phase, or use CloudFront as an additional layer in front of Amplify for more control.
+
+**When to use CloudFront separately**:
+- Custom caching rules (e.g. cache images for 1 year, HTML for 0 seconds)
+- WAF (Web Application Firewall) for protection against attacks
+- Advanced routing or geo-restrictions
+
+### 4.1 Create CloudFront Distribution (Optional, for Amplify)
+
+1. **AWS Console → CloudFront → Create Distribution**
+2. **Origin Domain**: Paste your Amplify URL (`main.d1234abcd.amplifyapp.com`)
+3. **Viewer Protocol Policy**: `Redirect HTTP to HTTPS`
+4. **Cache Policy**: `CachingDisabled` for the root, `CachingOptimized` for `/assets/*`
+5. **Price Class**: `Use North America, Europe, Asia` (balanced cost/speed for India)
+6. **Alternate Domain Names (CNAMEs)**: `www.mahalaxmi-tailors.shop`
+7. **SSL Certificate**: Request a certificate in **ACM (us-east-1)** for `mahalaxmi-tailors.shop` and `www.mahalaxmi-tailors.shop`
+8. **Default Root Object**: `index.html`
+
+### 4.2 Custom Error Pages (SPA Routing)
+
+In CloudFront → **Error Pages** → **Create Custom Error Response**:
+
+| HTTP Error Code | Response Page Path | HTTP Response Code |
+|---|---|---|
+| 403 | `/index.html` | 200 |
+| 404 | `/index.html` | 200 |
+
+---
+
+## 5. Phase 4: Domain & DNS on Route 53 <a name="5-phase-4-route-53"></a>
+
+### 5.1 Register / Transfer Domain
+
+If you have a domain elsewhere (e.g. GoDaddy), you can:
+- **Transfer it to Route 53** (easiest long-term), OR
+- Just **update the nameservers** in GoDaddy to point to Route 53
+
+### 5.2 Create a Hosted Zone
+
+1. **Route 53 → Hosted Zones → Create Hosted Zone**
+2. **Domain**: `mahalaxmi-tailors.shop`
+3. **Type**: Public Hosted Zone
+4. AWS will give you **4 nameservers** (e.g. `ns-123.awsdns-45.com`) — add these to your domain registrar.
+
+### 5.3 Create DNS Records
+
+In the hosted zone, create these records:
+
+| Record Name | Type | Value | Alias? |
+|---|---|---|---|
+| `api.mahalaxmi-tailors.shop` | **A** | EC2 Public IP (e.g. `13.235.12.45`) | No |
+| `www.mahalaxmi-tailors.shop` | **CNAME** or **A (Alias)** | Amplify / CloudFront domain | Yes (for Alias) |
+| `mahalaxmi-tailors.shop` (apex) | **A (Alias)** | Amplify / CloudFront domain | Yes |
+
+> 💡 **For Amplify**: In Amplify → **Domain Management**, you can directly attach your Route 53 domain and Amplify will auto-create the records.
+
+### 5.4 Attach Domain to Amplify (Recommended)
+
+1. **Amplify → App → Domain Management → Add Domain**
+2. Enter `mahalaxmi-tailors.shop`
+3. Amplify will automatically create the DNS records in Route 53 and provision SSL certificates (via ACM)
+4. Subdomains: Configure `www.mahalaxmi-tailors.shop` → `main` branch
+
+---
+
+## 6. Phase 5: CI/CD with GitHub Actions <a name="6-phase-5-cicd"></a>
+
+### 6.1 GitHub Secrets Required
+
+Go to **GitHub → Repo → Settings → Secrets and Variables → Actions** and add:
+
+| Secret Name | Value |
+|---|---|
+| `EC2_HOST` | Your EC2 Public IP (e.g. `13.235.12.45`) |
+| `EC2_USER` | `ubuntu` |
+| `EC2_SSH_KEY` | Contents of `mahalaxmi-key.pem` (the whole file) |
+| `AWS_ACCESS_KEY_ID` | From IAM deploy user (Step 1.1) |
+| `AWS_SECRET_ACCESS_KEY` | From IAM deploy user (Step 1.1) |
+| `CLOUDFRONT_DISTRIBUTION_ID` | From CloudFront (optional) |
+
+> ⚠️ **NEVER** commit real credentials to `.env.example` or any file. Use GitHub Secrets for CI/CD.
+
+### 6.2 How the CI/CD Pipeline Works
+
+On every push to `main`:
+1. **`deploy-backend`** job: SSHes into EC2, pulls latest code, runs `npm install`, and reloads PM2
+2. **`deploy-frontend`** job: Amplify automatically triggers a new build (no GitHub Action needed — Amplify is watching the `main` branch)
+
+The existing [`.github/workflows/deploy.yml`](file:///d:/Projects/Mahalaxmi-Tailoring/.github/workflows/deploy.yml) handles the backend deployment automatically.
+
+---
+
+## 7. Recommended Additional Services <a name="7-recommended-services"></a>
+
+Here are highly useful AWS services for this project:
+
+| Service | Purpose | Cost |
+|---|---|---|
+| **AWS SES** (already configured) | Transactional emails (order confirmation, contact forms) | ~$0.10/1000 emails |
+| **AWS WAF** | Protect against SQL injection, DDoS, bots on CloudFront | ~$5/month |
+| **AWS CloudWatch** | Monitor EC2 CPU, memory, logs; set alarms | Free tier available |
+| **AWS SNS** | Push alerts to your phone/email when CPU spikes or errors occur | Free tier available |
+| **AWS Secrets Manager** | Store `.env` secrets securely — EC2 fetches them at runtime (no `.env` file on server) | ~$0.40/secret/month |
+| **AWS Backup** | Automated daily backups of EC2 instance | ~$5/month |
+| **AWS Certificate Manager (ACM)** | Free SSL/TLS certificates for CloudFront & ALB | **Free** |
+| **Elastic IP** | Static IP for EC2 (so your DNS record never breaks) | Free when attached to running instance |
+
+### 🔥 Top Priority Recommendations:
+
+1. **Elastic IP** — Attach a static IP to EC2 immediately so your DNS record doesn't change on instance restarts
+2. **CloudWatch + SNS** — Get alerts when the server is down
+3. **AWS WAF** — Protect your API from abuse
+4. **AWS Secrets Manager** — For production, move `.env` secrets out of the file system
+
+### Assign Elastic IP:
+1. **EC2 → Elastic IPs → Allocate Elastic IP Address**
+2. **Associate** it with your `Mahalaxmi-Backend` instance
+3. Update the `api.mahalaxmi-tailors.shop` DNS A record with this static IP
+
+---
+
+## 8. Environment Variables Reference <a name="8-env-reference"></a>
+
+### Backend `.env` (on EC2 — DO NOT commit this file)
+```env
+PORT=5000
+NODE_ENV=production
+MONGODB_URI=<your MongoDB Atlas connection string>
+JWT_SECRET=<minimum 64 character random string>
+
+RAZORPAY_KEY_ID=<from Razorpay dashboard>
+RAZORPAY_KEY_SECRET=<from Razorpay dashboard>
+
+CLOUDINARY_CLOUD_NAME=<from Cloudinary dashboard>
+CLOUDINARY_API_KEY=<from Cloudinary dashboard>
+CLOUDINARY_API_SECRET=<from Cloudinary dashboard>
+
+SES_FROM_NAME=Mahalaxmi Tailors
+SES_FROM_EMAIL=noreply@mahalaxmi-tailors.shop
+CONTACT_EMAIL=support@mahalaxmi-tailors.shop
+
+# Use EC2 IAM Role instead of keys — AWS SDK picks it up automatically
+AWS_REGION=ap-south-1
+
+FRONTEND_URL=https://www.mahalaxmi-tailors.shop
+```
+
+### Frontend Amplify Environment Variables
+```env
+VITE_API_URL=https://api.mahalaxmi-tailors.shop/api
+NODE_ENV=production
+```
+
+---
+
+## ✅ Deployment Checklist
+
+- [ ] IAM deploy user created with correct permissions
+- [ ] EC2 IAM Role (`Mahalaxmi-EC2-Role`) created and attached to instance
+- [ ] EC2 launched with Ubuntu 24.04, security group configured
+- [ ] Elastic IP allocated and attached to EC2
+- [ ] Node.js, PM2, Nginx, Git installed on EC2
+- [ ] Backend code cloned and `.env` file created on EC2
+- [ ] PM2 started and configured to auto-restart on reboot
+- [ ] Nginx configured as reverse proxy on port 80
+- [ ] Route 53 hosted zone created and nameservers updated at registrar
+- [ ] DNS A record for `api.mahalaxmi-tailors.shop` → Elastic IP
+- [ ] SSL certificate installed via Certbot on EC2
+- [ ] Amplify app created and connected to GitHub `main` branch
+- [ ] Amplify build settings configured (see Phase 2)
+- [ ] Amplify custom domain attached (`www.mahalaxmi-tailors.shop`)
+- [ ] GitHub Secrets added (`EC2_HOST`, `EC2_USER`, `EC2_SSH_KEY`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`)
+- [ ] Test end-to-end: push to `main` → backend auto-deploys → frontend auto-builds
+- [ ] MongoDB Atlas IP Whitelist: add EC2 Elastic IP to allowed list
+- [ ] Remove port 5000 from EC2 security group (after Nginx is confirmed working)
+- [ ] CloudWatch alarm set for EC2 CPU > 80%

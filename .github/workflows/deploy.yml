@@ -1,4 +1,4 @@
-name: Deploy to EC2
+name: 🚀 Deploy to AWS
 
 on:
   push:
@@ -6,60 +6,52 @@ on:
       - main
 
 jobs:
+  # ─────────────────────────────────────────────
+  # JOB 1: Deploy Backend to EC2
+  # ─────────────────────────────────────────────
   deploy-backend:
+    name: Deploy Backend → EC2
     runs-on: ubuntu-latest
 
     steps:
-
-      # This downloads your GitHub repo code into the runner machine. 
-      # Without this, the workflow can't access your project files.
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      # This uses a GitHub Action that connects to your EC2 server using SSH. 
-      # It pulls the latest code and restarts the backend application using PM2.    
-      - name: Deploy to EC2
+      - name: Deploy to EC2 via SSH
         uses: appleboy/ssh-action@v1.0.0
-
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-
-          # Everything below this runs inside your EC2 machine.
           script: |
-            # Navigate to repo
+            # Navigate to project directory
             cd /home/ubuntu/Mahalaxmi-Tailoring
+
+            # Pull latest code
             git pull origin main
-            
-            # Backend Deployment
+
+            # Install/update backend dependencies
             cd backend
-            npm install
-            
-            # Restart Application (Zero-Downtime Reload)
+            npm install --production
+
+            # Reload app with zero downtime (PM2)
             pm2 reload ecosystem.config.js --env production || pm2 restart mahalaxmi-backend
 
-  deploy-frontend:
+            # Show status
+            pm2 status
+
+  # ─────────────────────────────────────────────
+  # JOB 2: CloudFront Cache Invalidation
+  # (Runs after backend deploys successfully)
+  # Note: Amplify auto-builds on push — no need 
+  # to manually trigger it here.
+  # ─────────────────────────────────────────────
+  invalidate-cloudfront:
+    name: Invalidate CloudFront Cache
     runs-on: ubuntu-latest
-    needs: deploy-backend 
-    
+    needs: deploy-backend
+
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install & Build Frontend
-        env:
-          VITE_API_URL: https://api.mahalaxmi-tailors.shop/api
-        run: |
-          cd frontend
-          npm install
-          npm run build
-
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -67,17 +59,16 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-south-1
 
-      - name: Deploy to S3
-        run: |
-          aws s3 sync frontend/dist s3://mahalaxmi-tailors-frontend --delete
-
-      - name: Invalidate CloudFront (Optional)
+      - name: Invalidate CloudFront Cache
         env:
           DIST_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
         run: |
           if [ -n "$DIST_ID" ]; then
-            echo "Invalidating CloudFront Distribution: $DIST_ID"
-            aws cloudfront create-invalidation --distribution-id "$DIST_ID" --paths "/*"
+            echo "🔄 Invalidating CloudFront Distribution: $DIST_ID"
+            aws cloudfront create-invalidation \
+              --distribution-id "$DIST_ID" \
+              --paths "/*"
+            echo "✅ Cache invalidation triggered!"
           else
-            echo "No Distribution ID provided. Skipping invalidation."
+            echo "ℹ️  No CloudFront Distribution ID set. Skipping invalidation."
           fi
