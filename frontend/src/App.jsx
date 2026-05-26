@@ -25,8 +25,8 @@ const Wishlist = lazy(() => import('./pages/Wishlist'));
 const Cart = lazy(() => import('./pages/Cart'));
 const Checkout = lazy(() => import('./pages/Checkout'));
 const CustomerDashboard = lazy(() => import('./pages/CustomerDashboard'));
-const AdminDashboard = lazy(() => import('./pages/DashboardPages').then(module => ({ default: module.AdminDashboard })));
-const AdminProducts = lazy(() => import('./pages/DashboardPages').then(module => ({ default: module.AdminProducts })));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const AdminProducts = lazy(() => import('./pages/AdminProducts'));
 
 const AdminOrders = lazy(() => import('./pages/AdminOrders'));
 const AdminOrderDetails = lazy(() => import('./pages/AdminOrderDetails'));
