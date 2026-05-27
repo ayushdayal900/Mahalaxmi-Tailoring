@@ -31,6 +31,7 @@ coverage/
 *.sln
 *.sw?
 *.swo
+*.pem
 
 # Logs
 npm-debug.log*
