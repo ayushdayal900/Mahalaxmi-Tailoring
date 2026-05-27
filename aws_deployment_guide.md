@@ -754,19 +754,32 @@ pipeline {
 }
 ```
 
-### 8.6 Configure Jenkins Polling (Poll SCM)
+### 8.6 Create the Pipeline Job in Jenkins
+
+Now that the `Jenkinsfile` is in your repository, you need to create the job in Jenkins:
+
+1. Go to the Jenkins Dashboard and click **New Item** (on the left menu).
+2. Enter a name (e.g., `mahalaxmi-backend-pipeline`).
+3. Select **Pipeline** and click **OK**.
+4. Scroll down to the **Pipeline** section at the bottom.
+5. Change the **Definition** dropdown to **Pipeline script from SCM**.
+6. **SCM**: Select **Git**.
+7. **Repository URL**: `https://github.com/ayushdayal900/Mahalaxmi-Tailoring.git`
+8. **Branch Specifier**: Change `*/master` to `*/main`.
+9. **Script Path**: Leave as `Jenkinsfile` (this tells Jenkins to look for the file we created).
+
+### 8.7 Configure Jenkins Polling (Poll SCM)
 
 Instead of using webhooks, Jenkins can automatically check GitHub for new code every few minutes:
 
-1. Open your pipeline job in Jenkins and click **Configure**.
-2. Scroll down to the **Build Triggers** section.
-3. Check the box for **Poll SCM**.
-4. In the Schedule box, enter: `H/5 * * * *` (This tells Jenkins to check for updates every 5 minutes).
-5. Click **Save**.
+1. While still on the Pipeline Configuration page (or click **Configure** on your job), scroll down to the **Build Triggers** section.
+2. Check the box for **Poll SCM**.
+3. In the Schedule box, enter: `H/5 * * * *` (This tells Jenkins to check for updates every 5 minutes).
+4. Click **Save**.
 
 *Note: Jenkins will now periodically check your GitHub repository and automatically trigger a build if new commits are found on the `main` branch.*
 
-### 8.7 Nginx Reverse Proxy for Jenkins (Production Setup)
+### 8.8 Nginx Reverse Proxy for Jenkins (Production Setup)
 
 To expose Jenkins on port 443 (HTTPS) instead of 8080:
 
@@ -802,7 +815,7 @@ sudo certbot --nginx -d jenkins.mahalaxmi-tailors.shop
 
 Add a DNS A record in Route 53: `jenkins.mahalaxmi-tailors.shop` → Jenkins EC2 IP.
 
-### 8.8 Pipeline Summary
+### 8.9 Pipeline Summary
 
 ```
 Developer pushes to main
