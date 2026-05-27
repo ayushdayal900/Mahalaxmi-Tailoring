@@ -754,15 +754,17 @@ pipeline {
 }
 ```
 
-### 8.6 Configure GitHub Webhook
+### 8.6 Configure Jenkins Polling (Poll SCM)
 
-So Jenkins automatically triggers on every push to `main`:
+Instead of using webhooks, Jenkins can automatically check GitHub for new code every few minutes:
 
-1. Go to **GitHub → Repo → Settings → Webhooks → Add webhook**
-2. **Payload URL**: `http://<JENKINS_EC2_IP>:8080/github-webhook/`
-3. **Content type**: `application/json`
-4. **Trigger**: Just the push event
-5. In Jenkins job → **Build Triggers** → enable **GitHub hook trigger for GITScm polling**
+1. Open your pipeline job in Jenkins and click **Configure**.
+2. Scroll down to the **Build Triggers** section.
+3. Check the box for **Poll SCM**.
+4. In the Schedule box, enter: `H/5 * * * *` (This tells Jenkins to check for updates every 5 minutes).
+5. Click **Save**.
+
+*Note: Jenkins will now periodically check your GitHub repository and automatically trigger a build if new commits are found on the `main` branch.*
 
 ### 8.7 Nginx Reverse Proxy for Jenkins (Production Setup)
 
@@ -806,7 +808,7 @@ Add a DNS A record in Route 53: `jenkins.mahalaxmi-tailors.shop` → Jenkins EC2
 Developer pushes to main
         │
         ▼
-   GitHub Webhook
+   Jenkins Poll SCM
         │
         ▼
    Jenkins Pipeline
@@ -927,7 +929,7 @@ NODE_ENV=production
 - [ ] EC2 SSH private key credential added to Jenkins (`ec2-ssh-key`)
 - [ ] `Jenkinsfile` added to project root
 - [ ] Jenkins pipeline job created and pointing to `Jenkinsfile`
-- [ ] GitHub webhook configured: `http://<JENKINS_EC2_IP>:8080/github-webhook/`
+- [ ] Jenkins Poll SCM configured (e.g., `H/5 * * * *`)
 - [ ] Nginx reverse proxy configured for Jenkins (port 443)
 - [ ] SSL certificate issued for `jenkins.mahalaxmi-tailors.shop`
 - [ ] DNS A record for `jenkins.mahalaxmi-tailors.shop` → Jenkins EC2 IP
