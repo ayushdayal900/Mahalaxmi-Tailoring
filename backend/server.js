@@ -22,19 +22,34 @@ app.use((req, res, next) => {
     next();
 });
 
-// CORS Middleware - MUST BE FIRST
+const allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:5175',
+    'http://localhost:5176',
+    'https://mahalaxmi-tailoring.vercel.app', // Vercel App
+    'https://mahalaxmi-tailors.shop', // Custom Domain
+    'https://www.mahalaxmi-tailors.shop', // Custom Domain (www)
+    process.env.FRONTEND_URL
+].filter(Boolean);
+
 const corsOptions = {
-    origin: [
-        'http://localhost:5173',
-        'http://localhost:5174',
-        'http://localhost:5175',
-        'http://localhost:5176',
-        'https://mahalaxmi-tailoring.vercel.app', // Vercel App
-        'https://main.d10dcrvma98p9c.amplifyapp.com', // AWS Amplify App
-        'https://mahalaxmi-tailors.shop', // Custom Domain
-        'https://www.mahalaxmi-tailors.shop', // Custom Domain (www)
-        process.env.FRONTEND_URL
-    ].filter(Boolean),
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps, curl, or same-origin)
+        if (!origin) return callback(null, true);
+        
+        // Check if origin is in the allowed list
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            return callback(null, true);
+        }
+        
+        // Dynamically allow any AWS Amplify subdomain
+        if (origin.endsWith('.amplifyapp.com')) {
+            return callback(null, true);
+        }
+        
+        return callback(new Error('Not allowed by CORS'));
+    },
     credentials: true, // Allow cookies
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
