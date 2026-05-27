@@ -14,6 +14,7 @@
 7. [Phase 6: Configuration Management with Ansible](#7-phase-6-ansible)
 8. [Phase 7: Self-Hosted CI/CD with Jenkins](#8-phase-7-jenkins)
 9. [Recommended Additional Services](#9-recommended-services)
+   - 9.5 [Alternative: Skipping Route 53 (Using nip.io for Free SSL)](#95-nip-io)
 10. [Environment Variables Reference](#10-env-reference)
 
 ---
@@ -865,6 +866,60 @@ Here are highly useful AWS services for this project:
 1. **EC2 → Elastic IPs → Allocate Elastic IP Address**
 2. **Associate** it with your `Mahalaxmi-Backend` instance
 3. Update the `api.mahalaxmi-tailors.shop` DNS A record with this static IP
+
+---
+
+## 9.5 Alternative: Skipping Route 53 (Using nip.io for Free SSL) <a name="95-nip-io"></a>
+
+If you want to host your frontend on **AWS Amplify** (which forces HTTPS) and connect it to your **EC2 backend** without buying a custom domain or using Route 53:
+
+### 1. The Dynamic Domain
+We use `nip.io`, a free wildcard DNS helper. It resolves `<anything>-<EC2-IP>.nip.io` back to your EC2 instance.
+For your IP `35.154.216.9`, your backend domain will be:
+`35-154-216-9.nip.io`
+
+### 2. Configure Nginx on EC2
+SSH into your EC2 backend server and edit your Nginx site configuration:
+```bash
+sudo nano /etc/nginx/sites-available/mahalaxmi
+```
+
+Change the `server_name` line to:
+```nginx
+server_name 35-154-216-9.nip.io;
+```
+
+Test and reload Nginx:
+```bash
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+### 3. Generate Let's Encrypt SSL Certificate
+Run Certbot to fetch a valid SSL certificate and configure HTTPS automatically on Nginx:
+```bash
+sudo apt update
+sudo apt install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d 35-154-216-9.nip.io
+```
+
+Confirm that going to `https://35-154-216-9.nip.io` in a browser shows the secure green lock and `Mahalaxmi Tailoring API is running...`.
+
+### 4. Configure AWS Amplify Environment Variables
+In your AWS Amplify Console dashboard:
+1. Go to **App Settings > Environment Variables**.
+2. Set `VITE_API_URL` to `https://35-154-216-9.nip.io` (HTTPS, no port).
+3. Redeploy your branch to rebuild React with the new endpoint.
+
+### 5. Update Backend CORS Allowed Origins
+On the EC2 backend server, update your `.env` file to authorize your Amplify URL:
+```env
+FRONTEND_URL=https://main.d9vlrbw3rtht6.amplifyapp.com
+```
+Then reload PM2:
+```bash
+pm2 reload mahalaxmi-backend --update-env
+```
 
 ---
 
