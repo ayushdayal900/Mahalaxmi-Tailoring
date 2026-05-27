@@ -1,6 +1,6 @@
 # 🚀 AWS Deployment Guide — Mahalaxmi Tailors
 
-**Stack**: MongoDB Atlas · Node.js/Express on EC2 · React on AWS Amplify · CloudFront CDN · Route 53 DNS · IAM Security
+**Stack**: MongoDB Atlas · Node.js/Express on EC2 · React on AWS Amplify · CloudFront CDN · Route 53 DNS · IAM Security · Ansible · Jenkins
 
 ---
 
@@ -11,8 +11,10 @@
 4. [Phase 3: CloudFront CDN](#4-phase-3-cloudfront)
 5. [Phase 4: Domain & DNS on Route 53](#5-phase-4-route-53)
 6. [Phase 5: CI/CD with GitHub Actions](#6-phase-5-cicd)
-7. [Recommended Additional Services](#7-recommended-services)
-8. [Environment Variables Reference](#8-env-reference)
+7. [Phase 6: Configuration Management with Ansible](#7-phase-6-ansible)
+8. [Phase 7: Self-Hosted CI/CD with Jenkins](#8-phase-7-jenkins)
+9. [Recommended Additional Services](#9-recommended-services)
+10. [Environment Variables Reference](#10-env-reference)
 
 ---
 
@@ -385,7 +387,444 @@ The existing [`.github/workflows/deploy.yml`](file:///d:/Projects/Mahalaxmi-Tail
 
 ---
 
-## 7. Recommended Additional Services <a name="7-recommended-services"></a>
+## 7. Phase 6: Configuration Management with Ansible <a name="7-phase-6-ansible"></a>
+
+Ansible automates the provisioning and configuration of your EC2 server — so you can rebuild the entire server environment with a single command instead of running manual steps.
+
+> 💡 **When to use Ansible**: When you need to spin up a new EC2 instance (e.g., scaling, disaster recovery), onboard a second server, or ensure all server configs are version-controlled and reproducible.
+
+### 7.1 Install Ansible (on your local machine / CI runner)
+
+```bash
+# On Ubuntu/WSL
+sudo apt update && sudo apt install -y ansible
+
+# On macOS
+brew install ansible
+
+# Verify
+ansible --version
+```
+
+> 💡 **Windows users**: Run Ansible from WSL (Windows Subsystem for Linux) or from a GitHub Actions runner (Linux-based). Ansible does not run natively on Windows.
+
+### 7.2 Project Structure
+
+Create an `ansible/` folder in your project root:
+
+```
+ansible/
+├── inventory.ini          # Defines your EC2 hosts
+├── playbook.yml           # Master playbook
+└── roles/
+    └── backend/
+        ├── tasks/
+        │   └── main.yml   # Installation & setup tasks
+        └── templates/
+            └── nginx.conf.j2  # Nginx config template
+```
+
+### 7.3 Inventory File
+
+Create `ansible/inventory.ini`:
+
+```ini
+[backend]
+mahalaxmi-ec2 ansible_host=<YOUR_EC2_ELASTIC_IP> ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/mahalaxmi-key.pem
+```
+
+> ⚠️ Never commit `mahalaxmi-key.pem` to Git. Add `*.pem` to your `.gitignore`.
+
+### 7.4 Master Playbook
+
+Create `ansible/playbook.yml`:
+
+```yaml
+---
+- name: Provision Mahalaxmi Backend Server
+  hosts: backend
+  become: true   # Run tasks as sudo
+
+  vars:
+    node_version: "20"
+    app_dir: /home/ubuntu/Mahalaxmi-Tailoring
+    repo_url: https://github.com/ayushdayal900/Mahalaxmi-Tailoring.git
+
+  tasks:
+    # --- System Setup ---
+    - name: Update and upgrade apt packages
+      apt:
+        update_cache: yes
+        upgrade: dist
+
+    - name: Install essential packages
+      apt:
+        name:
+          - git
+          - curl
+          - nginx
+          - certbot
+          - python3-certbot-nginx
+        state: present
+
+    # --- Node.js ---
+    - name: Add NodeSource repo for Node.js {{ node_version }}
+      shell: |
+        curl -fsSL https://deb.nodesource.com/setup_{{ node_version }}.x | bash -
+      args:
+        creates: /etc/apt/sources.list.d/nodesource.list
+
+    - name: Install Node.js
+      apt:
+        name: nodejs
+        state: present
+        update_cache: yes
+
+    - name: Install PM2 globally
+      npm:
+        name: pm2
+        global: yes
+        state: present
+
+    # --- Clone / Pull Repository ---
+    - name: Clone or update repository
+      git:
+        repo: "{{ repo_url }}"
+        dest: "{{ app_dir }}"
+        version: main
+        force: yes
+      become_user: ubuntu
+
+    - name: Install backend npm dependencies
+      npm:
+        path: "{{ app_dir }}/backend"
+        production: yes
+      become_user: ubuntu
+
+    # --- Nginx ---
+    - name: Deploy Nginx config from template
+      template:
+        src: roles/backend/templates/nginx.conf.j2
+        dest: /etc/nginx/sites-available/mahalaxmi
+      notify: Reload Nginx
+
+    - name: Enable Nginx site
+      file:
+        src: /etc/nginx/sites-available/mahalaxmi
+        dest: /etc/nginx/sites-enabled/mahalaxmi
+        state: link
+      notify: Reload Nginx
+
+    - name: Remove default Nginx site
+      file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+      notify: Reload Nginx
+
+    # --- PM2 ---
+    - name: Start backend with PM2
+      shell: |
+        pm2 start {{ app_dir }}/backend/ecosystem.config.js --env production
+        pm2 save
+      become_user: ubuntu
+      args:
+        chdir: "{{ app_dir }}/backend"
+
+    - name: Set PM2 startup on reboot
+      shell: pm2 startup | tail -1 | bash
+      become_user: ubuntu
+
+  handlers:
+    - name: Reload Nginx
+      service:
+        name: nginx
+        state: reloaded
+```
+
+### 7.5 Nginx Config Template
+
+Create `ansible/roles/backend/templates/nginx.conf.j2`:
+
+```nginx
+server {
+    listen 80;
+    server_name api.mahalaxmi-tailors.shop;
+
+    location / {
+        proxy_pass http://localhost:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    client_max_body_size 10M;
+}
+```
+
+### 7.6 Run the Playbook
+
+```bash
+# Dry run first (check what will change without applying)
+ansible-playbook -i ansible/inventory.ini ansible/playbook.yml --check
+
+# Apply the playbook
+ansible-playbook -i ansible/inventory.ini ansible/playbook.yml
+
+# Run only specific tags (e.g. just Nginx)
+ansible-playbook -i ansible/inventory.ini ansible/playbook.yml --tags nginx
+```
+
+### 7.7 Integrate Ansible into GitHub Actions (Optional)
+
+Add a step in `.github/workflows/deploy.yml` to run the playbook automatically on push:
+
+```yaml
+- name: Run Ansible Playbook
+  uses: dawidd6/action-ansible-playbook@v2
+  with:
+    playbook: ansible/playbook.yml
+    inventory: ansible/inventory.ini
+    key: ${{ secrets.EC2_SSH_KEY }}
+  env:
+    ANSIBLE_HOST_KEY_CHECKING: "False"
+```
+
+---
+
+## 8. Phase 7: Self-Hosted CI/CD with Jenkins <a name="8-phase-7-jenkins"></a>
+
+Jenkins gives you a self-hosted, highly customizable CI/CD server — an alternative (or addition) to GitHub Actions. It is useful when you want full pipeline control, build artifact storage, or more complex multi-stage workflows.
+
+> 💡 **Jenkins vs GitHub Actions**: GitHub Actions is simpler and hosted by GitHub (free for public repos). Jenkins requires its own server but gives more control, can run behind a VPN, and supports complex pipelines with plugins.
+
+### 8.1 Install Jenkins on a Dedicated EC2 Instance
+
+It is recommended to run Jenkins on a **separate** `t3.small` EC2 instance, not on the same server as your backend.
+
+```bash
+# SSH into the Jenkins EC2 instance
+ssh -i "mahalaxmi-key.pem" ubuntu@<JENKINS_EC2_IP>
+
+# 1. Install Java (Jenkins requires Java 17+)
+sudo apt update
+sudo apt install -y openjdk-17-jdk
+java -version
+
+# 2. Add Jenkins repository and install
+curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | sudo tee \
+  /usr/share/keyrings/jenkins-keyring.asc > /dev/null
+echo deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] \
+  https://pkg.jenkins.io/debian-stable binary/ | sudo tee \
+  /etc/apt/sources.list.d/jenkins.list > /dev/null
+sudo apt update
+sudo apt install -y jenkins
+
+# 3. Start and enable Jenkins
+sudo systemctl start jenkins
+sudo systemctl enable jenkins
+sudo systemctl status jenkins
+
+# 4. Get the initial admin password
+sudo cat /var/lib/jenkins/secrets/initialAdminPassword
+```
+
+### 8.2 Open Jenkins in the Browser
+
+1. Add inbound rule to the Jenkins EC2 Security Group: **TCP port 8080** from your IP
+2. Open: `http://<JENKINS_EC2_IP>:8080`
+3. Paste the **initial admin password** from step 4 above
+4. Install **suggested plugins** when prompted
+5. Create your admin user
+
+> 💡 For production, put Jenkins behind Nginx on port 80/443 with SSL (same as your backend setup).
+
+### 8.3 Install Required Jenkins Plugins
+
+Go to **Jenkins → Manage Jenkins → Plugins → Available Plugins** and install:
+
+| Plugin | Purpose |
+|---|---|
+| **Git** | Pull code from GitHub |
+| **SSH Agent** | SSH into EC2 for deployment |
+| **NodeJS** | Run `npm install` and `npm run build` |
+| **Pipeline** | Declarative/scripted pipeline support |
+| **GitHub Integration** | Webhook triggers from GitHub |
+| **Blue Ocean** (optional) | Modern pipeline UI |
+| **Ansible** (optional) | Run Ansible playbooks from Jenkins |
+
+### 8.4 Configure Credentials in Jenkins
+
+Go to **Jenkins → Manage Jenkins → Credentials → (global) → Add Credentials**:
+
+| Kind | ID | Value |
+|---|---|---|
+| SSH Username with private key | `ec2-ssh-key` | Paste contents of `mahalaxmi-key.pem` |
+| Secret text | `mongodb-uri` | Your MongoDB Atlas connection string |
+| Secret text | `jwt-secret` | Your JWT secret |
+
+### 8.5 Create a Jenkinsfile
+
+Create `Jenkinsfile` in the project root:
+
+```groovy
+pipeline {
+    agent any
+
+    environment {
+        EC2_USER = 'ubuntu'
+        EC2_HOST = '<YOUR_EC2_ELASTIC_IP>'   // Replace with Elastic IP
+        APP_DIR  = '/home/ubuntu/Mahalaxmi-Tailoring'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'main',
+                    url: 'https://github.com/ayushdayal900/Mahalaxmi-Tailoring.git'
+            }
+        }
+
+        stage('Lint & Test (Backend)') {
+            steps {
+                dir('backend') {
+                    sh 'npm install'
+                    sh 'npm test --if-present'
+                }
+            }
+        }
+
+        stage('Lint & Test (Frontend)') {
+            steps {
+                dir('frontend') {
+                    sh 'npm install'
+                    sh 'npm run build'
+                }
+            }
+        }
+
+        stage('Deploy Backend to EC2') {
+            steps {
+                sshagent(credentials: ['ec2-ssh-key']) {
+                    sh '''
+                        ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} \"
+                            cd ${APP_DIR} && \
+                            git pull origin main && \
+                            cd backend && \
+                            npm install --production && \
+                            pm2 reload mahalaxmi-backend --update-env
+                        \"
+                    '''
+                }
+            }
+        }
+
+        stage('Run Ansible Provisioning (Optional)') {
+            when {
+                // Only run Ansible if triggered manually or on infra changes
+                expression { params.RUN_ANSIBLE == true }
+            }
+            steps {
+                ansiblePlaybook(
+                    playbook: 'ansible/playbook.yml',
+                    inventory: 'ansible/inventory.ini',
+                    credentialsId: 'ec2-ssh-key',
+                    extras: '-e "env=production"'
+                )
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '✅ Deployment successful!'
+        }
+        failure {
+            echo '❌ Deployment failed! Check the logs above.'
+            // Optional: Send email notification
+            // mail to: 'support@mahalaxmi-tailors.shop',
+            //      subject: "Jenkins Build Failed: ${env.JOB_NAME}",
+            //      body: "Build ${env.BUILD_NUMBER} failed. Check: ${env.BUILD_URL}"
+        }
+    }
+}
+```
+
+### 8.6 Configure GitHub Webhook
+
+So Jenkins automatically triggers on every push to `main`:
+
+1. Go to **GitHub → Repo → Settings → Webhooks → Add webhook**
+2. **Payload URL**: `http://<JENKINS_EC2_IP>:8080/github-webhook/`
+3. **Content type**: `application/json`
+4. **Trigger**: Just the push event
+5. In Jenkins job → **Build Triggers** → enable **GitHub hook trigger for GITScm polling**
+
+### 8.7 Nginx Reverse Proxy for Jenkins (Production Setup)
+
+To expose Jenkins on port 443 (HTTPS) instead of 8080:
+
+```bash
+# Create Nginx config for Jenkins
+sudo nano /etc/nginx/sites-available/jenkins
+```
+
+```nginx
+server {
+    listen 80;
+    server_name jenkins.mahalaxmi-tailors.shop;
+
+    location / {
+        proxy_pass http://localhost:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+```bash
+sudo ln -s /etc/nginx/sites-available/jenkins /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
+
+# Get SSL cert for Jenkins subdomain
+sudo certbot --nginx -d jenkins.mahalaxmi-tailors.shop
+```
+
+Add a DNS A record in Route 53: `jenkins.mahalaxmi-tailors.shop` → Jenkins EC2 IP.
+
+### 8.8 Pipeline Summary
+
+```
+Developer pushes to main
+        │
+        ▼
+   GitHub Webhook
+        │
+        ▼
+   Jenkins Pipeline
+   ┌─────────────────────────────────┐
+   │ 1. Checkout (git pull)          │
+   │ 2. Backend lint & test          │
+   │ 3. Frontend build               │
+   │ 4. SSH deploy to EC2 (PM2)      │
+   │ 5. Ansible (optional, on demand)│
+   └─────────────────────────────────┘
+        │
+        ▼
+   Notification (email/Slack)
+```
+
+---
+
+## 9. Recommended Additional Services <a name="9-recommended-services"></a>
 
 Here are highly useful AWS services for this project:
 
@@ -414,7 +853,7 @@ Here are highly useful AWS services for this project:
 
 ---
 
-## 8. Environment Variables Reference <a name="8-env-reference"></a>
+## 10. Environment Variables Reference <a name="10-env-reference"></a>
 
 ### Backend `.env` (on EC2 — DO NOT commit this file)
 ```env
@@ -450,6 +889,7 @@ NODE_ENV=production
 
 ## ✅ Deployment Checklist
 
+### Core AWS Setup
 - [ ] IAM deploy user created with correct permissions
 - [ ] EC2 IAM Role (`Mahalaxmi-EC2-Role`) created and attached to instance
 - [ ] EC2 launched with Ubuntu 24.04, security group configured
@@ -469,3 +909,26 @@ NODE_ENV=production
 - [ ] MongoDB Atlas IP Whitelist: add EC2 Elastic IP to allowed list
 - [ ] Remove port 5000 from EC2 security group (after Nginx is confirmed working)
 - [ ] CloudWatch alarm set for EC2 CPU > 80%
+
+### Ansible
+- [ ] `ansible/` directory created with `inventory.ini`, `playbook.yml`, and Nginx template
+- [ ] Ansible installed locally or on CI runner
+- [ ] `ansible/inventory.ini` updated with correct EC2 Elastic IP
+- [ ] `.pem` key file path set correctly in `inventory.ini`
+- [ ] Dry run (`--check`) completed successfully: `ansible-playbook ... --check`
+- [ ] Full playbook run completed: `ansible-playbook -i ansible/inventory.ini ansible/playbook.yml`
+- [ ] `*.pem` added to `.gitignore` (never commit SSH keys)
+- [ ] (Optional) Ansible step added to GitHub Actions `deploy.yml`
+
+### Jenkins
+- [ ] Jenkins EC2 instance launched (separate `t3.small` recommended)
+- [ ] Java 17 and Jenkins installed and running on port 8080
+- [ ] Required Jenkins plugins installed (Git, SSH Agent, NodeJS, Pipeline, GitHub Integration)
+- [ ] EC2 SSH private key credential added to Jenkins (`ec2-ssh-key`)
+- [ ] `Jenkinsfile` added to project root
+- [ ] Jenkins pipeline job created and pointing to `Jenkinsfile`
+- [ ] GitHub webhook configured: `http://<JENKINS_EC2_IP>:8080/github-webhook/`
+- [ ] Nginx reverse proxy configured for Jenkins (port 443)
+- [ ] SSL certificate issued for `jenkins.mahalaxmi-tailors.shop`
+- [ ] DNS A record for `jenkins.mahalaxmi-tailors.shop` → Jenkins EC2 IP
+- [ ] Test pipeline: push to `main` → Jenkins triggers → deploys successfully
