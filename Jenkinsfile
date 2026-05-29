@@ -1,9 +1,13 @@
 pipeline {
     agent any
 
+    parameters {
+        booleanParam(name: 'RUN_ANSIBLE', defaultValue: false, description: 'Run Ansible Provisioning Playbook')
+    }
+
     environment {
         EC2_USER = 'ubuntu'
-        EC2_HOST = '3.110.148.181'   // Replace with Elastic IP
+        EC2_HOST = '3.109.162.148'   
         APP_DIR  = '/home/ubuntu/Mahalaxmi-Tailoring'
     }
 
@@ -37,13 +41,14 @@ pipeline {
             steps {
                 sshagent(credentials: ['ec2-ssh-key']) {
                     sh '''
-                        ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} \"
+                        ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} "
                             cd ${APP_DIR} && \
-                            git pull origin main && \
+                            git fetch origin && \
+                            git reset --hard origin/main && \
                             cd backend && \
                             npm install --production && \
                             pm2 reload mahalaxmi-backend --update-env
-                        \"
+                        "
                     '''
                 }
             }

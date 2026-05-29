@@ -32,6 +32,7 @@ coverage/
 *.sw?
 *.swo
 *.pem
+backend/manage_admin.js
 
 # Logs
 npm-debug.log*

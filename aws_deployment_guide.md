@@ -8,7 +8,7 @@
 1. [IAM Setup (Security First)](#1-iam-setup)
 2. [Phase 1: Backend on EC2](#2-phase-1-backend-ec2)
 3. [Phase 2: Frontend on AWS Amplify](#3-phase-2-frontend-amplify)
-4. [Phase 3: CloudFront CDN](#4-phase-3-cloudfront)
+4. [Phase 3: CloudFront CDN for Backend API](#4-phase-3-cloudfront)
 5. [Phase 4: Domain & DNS on Route 53](#5-phase-4-route-53)
 6. [Phase 5: CI/CD with GitHub Actions](#6-phase-5-cicd)
 7. [Phase 6: Configuration Management with Ansible](#7-phase-6-ansible)
@@ -212,22 +212,19 @@ sudo nginx -t
 sudo systemctl restart nginx
 ```
 
-### 2.7 Install SSL Certificate (HTTPS)
+### 2.7 SSL Configuration (SSL Terminated at CloudFront)
 
-```bash
-# Install Certbot
-sudo apt install -y certbot python3-certbot-nginx
+Because you are using **AWS CloudFront** in front of your EC2 backend, **you do not need to install Certbot or configure SSL certificates on your EC2 instance**.
+* CloudFront handles the HTTPS SSL handshake (`https://api.mahalaxmi-tailors.shop`) at the edge.
+* CloudFront decrypts the traffic and forwards it to Nginx on your EC2 instance over HTTP (port 80).
+* Therefore, your Nginx config listening on port 80 (configured in Step 2.6) is already complete and sufficient.
 
-# Get SSL certificate (replace with your actual domain)
-# Do this AFTER setting up DNS in Route 53 (Phase 4 first)
-sudo certbot --nginx -d api.mahalaxmi-tailors.shop
-
-# Certbot will auto-renew — verify the timer is active
-sudo systemctl status certbot.timer
-```
-
-### 2.8 Remove Port 5000 from Security Group
-After confirming Nginx + SSL is working, go back to **EC2 → Security Groups** and **delete the inbound rule for port 5000** (no direct access to Node.js from the internet).
+### 2.8 Restrict Security Groups
+To secure your environment:
+1. Go to **AWS Console → EC2 → Security Groups** and select your backend security group.
+2. **Delete the inbound rule for port 5000** (restricts direct access to your Node.js application from the internet).
+3. **Keep Port 80 (HTTP) Open**: This is required so CloudFront can reach Nginx. (For maximum security, you can restrict Port 80 to accept traffic only from AWS CloudFront IP ranges using AWS Prefix Lists).
+4. **Keep Port 22 (SSH) Restricted**: Only allow SSH traffic from your specific public IP.
 
 ---
 
@@ -294,34 +291,40 @@ Note this — you'll need it for Route 53 and CORS.
 
 ---
 
-## 4. Phase 3: CloudFront CDN <a name="4-phase-3-cloudfront"></a>
+## 4. Phase 3: CloudFront CDN for Backend API (SSL & Security) <a name="4-phase-3-cloudfront"></a>
 
-> **Note**: If you're using **AWS Amplify**, it already includes a built-in CDN and SSL. You can skip this phase, or use CloudFront as an additional layer in front of Amplify for more control.
+To establish secure communication between your HTTPS Amplify frontend and your HTTP EC2 backend, we use **AWS CloudFront** in front of the EC2 instance. CloudFront serves as a secure proxy that handles HTTPS (SSL termination) and forwards requests to your EC2 instance over HTTP.
 
-**When to use CloudFront separately**:
-- Custom caching rules (e.g. cache images for 1 year, HTML for 0 seconds)
-- WAF (Web Application Firewall) for protection against attacks
-- Advanced routing or geo-restrictions
+### 4.1 Request SSL Certificate in AWS ACM
+Before creating the CloudFront distribution, you must request a free SSL certificate for your API subdomain:
+1. Go to **AWS Console → Certificate Manager (ACM)**.
+2. **CRITICAL**: Switch your AWS Region to **us-east-1 (N. Virginia)** at the top right. CloudFront distributions only support ACM certificates issued in `us-east-1`.
+3. Click **Request Certificate → Request a public certificate**.
+4. **Fully qualified domain name**: `api.mahalaxmi-tailors.shop`
+5. **Validation method**: DNS validation (recommended).
+6. Click **Request**.
+7. In the certificate details page, click **Create records in Route 53** to automatically add the DNS validation records to your hosted zone. Wait a few minutes for the status to change to **Issued**.
 
-### 4.1 Create CloudFront Distribution (Optional, for Amplify)
-
-1. **AWS Console → CloudFront → Create Distribution**
-2. **Origin Domain**: Paste your Amplify URL (`main.d1234abcd.amplifyapp.com`)
-3. **Viewer Protocol Policy**: `Redirect HTTP to HTTPS`
-4. **Cache Policy**: `CachingDisabled` for the root, `CachingOptimized` for `/assets/*`
-5. **Price Class**: `Use North America, Europe, Asia` (balanced cost/speed for India)
-6. **Alternate Domain Names (CNAMEs)**: `www.mahalaxmi-tailors.shop`
-7. **SSL Certificate**: Request a certificate in **ACM (us-east-1)** for `mahalaxmi-tailors.shop` and `www.mahalaxmi-tailors.shop`
-8. **Default Root Object**: `index.html`
-
-### 4.2 Custom Error Pages (SPA Routing)
-
-In CloudFront → **Error Pages** → **Create Custom Error Response**:
-
-| HTTP Error Code | Response Page Path | HTTP Response Code |
-|---|---|---|
-| 403 | `/index.html` | 200 |
-| 404 | `/index.html` | 200 |
+### 4.2 Create CloudFront Distribution for Backend
+1. Go to **AWS Console → CloudFront → Distributions → Create Distribution**.
+2. **Origin Settings**:
+   * **Origin Domain**: Enter your EC2 instance's **Public IPv4 DNS** (e.g., `ec2-35-154-216-9.ap-south-1.compute.amazonaws.com`).
+   * **Protocol**: Choose **HTTP only** (Port `80`).
+   * **Origin Path**: Leave blank.
+3. **Default Cache Behavior Settings**:
+   * **Viewer Protocol Policy**: **Redirect HTTP to HTTPS** (forces secure traffic).
+   * **Allowed HTTP Methods**: **GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE** (critical for database operations, logins, and uploads).
+   * **Restrict Viewer Access**: No.
+4. **Cache Key and Origin Requests** (CRITICAL for APIs):
+   * Select **Cache policy and origin request policy (recommended)**.
+   * **Cache Policy**: Select **CachingDisabled** (forces CloudFront to immediately forward all dynamic API requests to EC2 instead of caching them).
+   * **Origin Request Policy**: Select **AllViewerExceptHostHeader** (ensures headers like `Authorization` tokens, `Cookie` sessions, and query parameters are forwarded to your Node.js backend. *Failing to select this will break logins and search queries*).
+5. **Settings**:
+   * **Alternate Domain Name (CNAME)**: Add `api.mahalaxmi-tailors.shop`.
+   * **Custom SSL Certificate**: Select your ACM certificate (`api.mahalaxmi-tailors.shop`) created in Step 4.1.
+   * **Security Policy**: Select `TLSv1.2_2021` (default).
+6. Click **Create Distribution**.
+7. *Wait 3–5 minutes for the status to change to `Enabled`.* Note the generated **Distribution Domain Name** (e.g., `d1234abcd.cloudfront.net`).
 
 ---
 
@@ -346,11 +349,21 @@ In the hosted zone, create these records:
 
 | Record Name | Type | Value | Alias? |
 |---|---|---|---|
-| `api.mahalaxmi-tailors.shop` | **A** | EC2 Public IP (e.g. `13.235.12.45`) | No |
-| `www.mahalaxmi-tailors.shop` | **CNAME** or **A (Alias)** | Amplify / CloudFront domain | Yes (for Alias) |
-| `mahalaxmi-tailors.shop` (apex) | **A (Alias)** | Amplify / CloudFront domain | Yes |
+| `api.mahalaxmi-tailors.shop` | **A (Alias)** | CloudFront Distribution Domain (e.g., `d1234abcd.cloudfront.net`) | Yes |
+| `www.mahalaxmi-tailors.shop` | **CNAME** or **A (Alias)** | Amplify Domain (e.g., `main.d1234abcd.amplifyapp.com`) | Yes (for Alias) |
+| `mahalaxmi-tailors.shop` (apex) | **A (Alias)** | Amplify Domain (e.g., `main.d1234abcd.amplifyapp.com`) | Yes |
 
-> 💡 **For Amplify**: In Amplify → **Domain Management**, you can directly attach your Route 53 domain and Amplify will auto-create the records.
+#### Steps to configure the API subdomain Alias:
+1. Go to **Route 53 → Hosted Zones → mahalaxmi-tailors.shop**.
+2. Click **Create record**.
+3. **Record name**: `api`
+4. **Record type**: `A - Routes traffic to an IPv4 address and some AWS resources`.
+5. Toggle the **Alias** switch to **Enabled** (on the right).
+6. **Route traffic to**: Choose **Alias to CloudFront distribution**.
+7. **Choose distribution**: Select your CloudFront distribution (the one created in Phase 3).
+8. Click **Create records**.
+
+> 💡 **For Amplify**: In Amplify → **Domain Management**, you can directly attach your Route 53 domain and Amplify will auto-create the records for the apex and `www` subdomains.
 
 ### 5.4 Attach Domain to Amplify (Recommended)
 
@@ -969,15 +982,16 @@ NODE_ENV=production
 - [ ] PM2 started and configured to auto-restart on reboot
 - [ ] Nginx configured as reverse proxy on port 80
 - [ ] Route 53 hosted zone created and nameservers updated at registrar
-- [ ] DNS A record for `api.mahalaxmi-tailors.shop` → Elastic IP
-- [ ] SSL certificate installed via Certbot on EC2
+- [ ] ACM SSL certificate for `api.mahalaxmi-tailors.shop` created in `us-east-1`
+- [ ] CloudFront distribution created pointing to EC2 public DNS, caching disabled, headers forwarded
+- [ ] Route 53 DNS A Record (Alias) created for `api.mahalaxmi-tailors.shop` → CloudFront
 - [ ] Amplify app created and connected to GitHub `main` branch
 - [ ] Amplify build settings configured (see Phase 2)
 - [ ] Amplify custom domain attached (`www.mahalaxmi-tailors.shop`)
 - [ ] GitHub Secrets added (`EC2_HOST`, `EC2_USER`, `EC2_SSH_KEY`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`)
 - [ ] Test end-to-end: push to `main` → backend auto-deploys → frontend auto-builds
 - [ ] MongoDB Atlas IP Whitelist: add EC2 Elastic IP to allowed list
-- [ ] Remove port 5000 from EC2 security group (after Nginx is confirmed working)
+- [ ] Remove port 5000 from EC2 security group (after confirming port 80 is reachable from CloudFront)
 - [ ] CloudWatch alarm set for EC2 CPU > 80%
 
 ### Ansible
