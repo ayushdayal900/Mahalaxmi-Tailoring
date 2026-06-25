@@ -155,7 +155,7 @@ exports.processMessage = async (req, res) => {
 
                 if (product) {
                     return res.json({
-                        text: `✅ Added **${quantity} x ${product.name}** to your cart.`,
+                        text: `DONE:  Added **${quantity} x ${product.name}** to your cart.`,
                         action: {
                             type: 'ADD_TO_CART',
                             payload: { product, quantity }

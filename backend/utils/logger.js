@@ -51,7 +51,7 @@ const transports = [
 
 // Add CloudWatch transport if credentials exist
 if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY && process.env.CLOUDWATCH_GROUP_NAME) {
-  console.log('✅ AWS CloudWatch Logging Enabled');
+  console.log('AWS CloudWatch Logging Enabled');
   transports.push(
     new WinstonCloudWatch({
       logGroupName: process.env.CLOUDWATCH_GROUP_NAME,

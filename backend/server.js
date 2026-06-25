@@ -27,6 +27,7 @@ const allowedOrigins = [
     'http://localhost:5174',
     'http://localhost:5175',
     'http://localhost:5176',
+    'http://localhost:3000',
     'https://mahalaxmi-tailoring.vercel.app', // Vercel App
     'https://mahalaxmi-tailors.shop', // Custom Domain
     'https://www.mahalaxmi-tailors.shop', // Custom Domain (www)
@@ -86,10 +87,18 @@ app.use(morgan('combined', { stream })); // Log requests to winston
 app.use(express.json()); // Parse JSON bodies
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
 
+const redisClient = require('./utils/redis');
+const { RedisStore } = require('rate-limit-redis');
+
 // Rate Limiting
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 5000 // limit each IP to 5000 requests per windowMs - Increased for dev
+    max: 5000, // limit each IP to 5000 requests per windowMs
+    standardHeaders: true,
+    legacyHeaders: false,
+    store: redisClient.isOpen ? new RedisStore({
+        sendCommand: (...args) => redisClient.sendCommand(args),
+    }) : undefined
 });
 app.use('/api', limiter);
 
@@ -102,8 +111,8 @@ app.use('/api', limiter);
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/mahalxmi_tailors';
 
 mongoose.connect(MONGODB_URI, { dbName: 'Mahalaxmi_db' })
-    .then(() => console.log('✅ MongoDB Connected Successfully'))
-    .catch(err => console.error('❌ MongoDB Connection Error:', err));
+    .then(() => console.log('DONE:  MongoDB Connected Successfully'))
+    .catch(err => console.error('ERROR:  MongoDB Connection Error:', err));
 
 // Routes
 app.use('/api/categories', require('./routes/categoryRoutes'));

@@ -31,4 +31,4 @@ Use this checklist to ensure you have a "fresh start" before deploying.
 *   [ ] Delete any `A` records or `CNAME` records pointing to the old EC2 IP or CloudFront.
 
 ---
-**✅ READY!** Once these are done, you can proceed to the **Deployment Guide** to create new resources.
+**DONE:  READY!** Once these are done, you can proceed to the **Deployment Guide** to create new resources.

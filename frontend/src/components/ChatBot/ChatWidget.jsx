@@ -104,7 +104,7 @@ const ChatWidget = () => {
                     addToCart(product);
                 }
                 setTimeout(() => {
-                    setMessages(prev => [...prev, { type: 'bot', text: `✅ Added ${quantity} ${product.name}(s) to cart.` }]);
+                    setMessages(prev => [...prev, { type: 'bot', text: `DONE:  Added ${quantity} ${product.name}(s) to cart.` }]);
                     // Use optional chaining for suggestions as they might depend on role
                     setSuggestedActions([
                         { label: 'View Cart', icon: <ShoppingBag size={14} />, cmd: 'Go to cart' },

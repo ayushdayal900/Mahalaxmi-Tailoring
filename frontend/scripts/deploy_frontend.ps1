@@ -12,7 +12,7 @@ Write-Host "🎨 Starting Frontend Deployment..." -ForegroundColor Cyan
 
 # 1. Verification
 if (-not (Test-Path "package.json")) {
-    Write-Error "❌ package.json not found! Are you in the 'frontend' directory?"
+    Write-Error "ERROR:  package.json not found! Are you in the 'frontend' directory?"
     exit 1
 }
 
@@ -22,7 +22,7 @@ npm install
 npm run build
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Error "❌ Build Failed!"
+    Write-Error "ERROR:  Build Failed!"
     exit 1
 }
 
@@ -47,4 +47,4 @@ if (Get-Command "aws" -ErrorAction SilentlyContinue) {
     Write-Host "   Please manually upload the contents of the 'dist' folder to your S3 bucket: $BucketName"
 }
 
-Write-Host "✅ Deployment Script Finished!" -ForegroundColor Green
+Write-Host "DONE:  Deployment Script Finished!" -ForegroundColor Green

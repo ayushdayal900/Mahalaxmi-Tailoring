@@ -71,7 +71,7 @@ sudo ln -sf /etc/nginx/sites-available/mahalaxmi /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl restart nginx
 
-echo "✅ EC2 Setup Complete (Phase 1)!"
+echo "DONE:  EC2 Setup Complete (Phase 1)!"
 echo "👉 Next Steps:"
 echo "1. Run 'nano .env' in the backend folder and paste your secrets."
 echo "2. Start the app: 'pm2 start ecosystem.config.js --env production'"

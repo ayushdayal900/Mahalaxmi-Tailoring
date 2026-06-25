@@ -165,7 +165,7 @@ res.cookie('jwt', refreshToken, {
 ```
 
 > Without `httpOnly` → attacker's injected `<script>` can run `document.cookie` and steal the token.  
-> With `httpOnly` → cookie is sent automatically by browser but JS can never read it. ✅
+> With `httpOnly` → cookie is sent automatically by browser but JS can never read it. DONE: 
 
 ---
 
@@ -257,10 +257,10 @@ req.user = await User.findById(decoded.id);               // attach user to requ
 | | Bearer (JWT) | Session Token | API Key |
 |--|------------|--------------|---------|
 | **Stored** | Client (localStorage/memory) | Server DB | Client (env file) |
-| **Stateless?** | ✅ Yes | ❌ No | ✅ Yes |
-| **Expires?** | ✅ Yes (15m here) | ✅ Yes | ❌ Usually not |
-| **Self-contained?** | ✅ Has user data inside | ❌ Just an ID | ❌ Just a key |
-| **Used in this project?** | ✅ Access Token | ❌ No | ✅ Razorpay, Cloudinary |
+| **Stateless?** | DONE:  Yes | ERROR:  No | DONE:  Yes |
+| **Expires?** | DONE:  Yes (15m here) | DONE:  Yes | ERROR:  Usually not |
+| **Self-contained?** | DONE:  Has user data inside | ERROR:  Just an ID | ERROR:  Just a key |
+| **Used in this project?** | DONE:  Access Token | ERROR:  No | DONE:  Razorpay, Cloudinary |
 
 ---
 
@@ -342,7 +342,7 @@ api.interceptors.response.use(null, async (error) => {
     document.dispatchEvent(new Event('auth:logout'));
 });
 ```
-> User never sees this happen. Token silently renews in background. ✅
+> User never sees this happen. Token silently renews in background. DONE: 
 
 ---
 
@@ -584,8 +584,8 @@ const generated_signature = crypto
     .update(razorpay_order_id + "|" + razorpay_payment_id) // the message
     .digest("hex");                           // output as hex string
 
-// If Razorpay's signature === our generated signature → payment is real ✅
-// If they don't match → someone tampered with it → reject ❌
+// If Razorpay's signature === our generated signature → payment is real DONE: 
+// If they don't match → someone tampered with it → reject ERROR: 
 ```
 
 > Razorpay signs the payment result using your `RAZORPAY_KEY_SECRET`.
@@ -624,7 +624,7 @@ sequenceDiagram
 
     A->>B: [3] Admin picks image → Save secure_url in Product/CMS
     B->>B: MongoDB: product.images = [secure_url]
-    B-->>A: Product saved ✅
+    B-->>A: Product saved DONE: 
 
     U->>C: [4] Customer visits page → browser loads img src=secure_url
     Note over U,C: Image served directly from Cloudinary CDN
@@ -674,7 +674,7 @@ uploadStream.end(file.buffer); // push file bytes into stream
 
 // Response: { secure_url: "https://res.cloudinary.com/...", public_id: "..." }
 ```
-> Image is never saved on our server disk — it's streamed directly to Cloudinary. ✅
+> Image is never saved on our server disk — it's streamed directly to Cloudinary. DONE: 
 
 ---
 
@@ -808,7 +808,7 @@ await Appointment.create({ user, type, date, time, meetingLink });
 Both open the same URL → Jitsi puts them in the same room.
 ```
 Customer:  https://meet.jit.si/MahalxmiTailors-6624abc-k3f9p2  ─┐
-Admin:     https://meet.jit.si/MahalxmiTailors-6624abc-k3f9p2  ─┘ same room ✅
+Admin:     https://meet.jit.si/MahalxmiTailors-6624abc-k3f9p2  ─┘ same room DONE: 
 ```
 
 ---
@@ -823,11 +823,11 @@ When a customer books a **Video Call** appointment, the backend generates a uniq
 
 | Feature | Jitsi Meet | Zoom / Google Meet |
 |---------|------------|-------------------|
-| **Cost** | ✅ Free forever | ❌ Paid after limits |
-| **API Key needed** | ✅ No | ❌ Yes |
-| **Self-hosted option** | ✅ Yes | ❌ No |
-| **Setup complexity** | ✅ Just a URL | ❌ SDK + OAuth |
-| **Used in this project** | ✅ Yes | ❌ No |
+| **Cost** | DONE:  Free forever | ERROR:  Paid after limits |
+| **API Key needed** | DONE:  No | ERROR:  Yes |
+| **Self-hosted option** | DONE:  Yes | ERROR:  No |
+| **Setup complexity** | DONE:  Just a URL | ERROR:  SDK + OAuth |
+| **Used in this project** | DONE:  Yes | ERROR:  No |
 
 ---
 
@@ -1001,7 +1001,7 @@ sequenceDiagram
     S-->>C: 200 Response
 
     C->>R: Request #5001 to /api/...
-    R->>R: Count: 5001 → LIMIT EXCEEDED ❌
+    R->>R: Count: 5001 → LIMIT EXCEEDED ERROR: 
     R-->>C: 429 Too Many Requests (blocked)
     Note over R: Counter resets after 15 minutes
 ```
@@ -1054,7 +1054,7 @@ Imagine a shop that allows only 5000 customers to enter every 15 minutes. If the
 | **Fixed Window** | Count resets at fixed time intervals | 100 req per minute, resets at :00 |
 | **Sliding Window** | Rolling time window, smoother | 100 req in any 60-second period |
 | **Token Bucket** | Tokens refill at fixed rate, burst allowed | Used in AWS, Nginx |
-| **IP-based** ✅ (this project) | Limit per client IP | 5000/15min per IP |
+| **IP-based** DONE:  (this project) | Limit per client IP | 5000/15min per IP |
 | **User-based** | Limit per logged-in user | 100 req/min per user account |
 
 ---
@@ -1095,7 +1095,7 @@ flowchart LR
     F -- YES --> G[Run Ansible\nPlaybook\nProvision server]
     F -- NO --> H
 
-    G --> H([✅ Success\nor ❌ Failure\nnotification])
+    G --> H([DONE:  Success\nor ERROR:  Failure\nnotification])
 ```
 
 ---
@@ -1126,7 +1126,7 @@ stage('Lint & Test (Backend)') {
     }
 }
 ```
-> If tests fail → pipeline stops here. Code does NOT get deployed. ✅
+> If tests fail → pipeline stops here. Code does NOT get deployed. DONE: 
 
 ---
 
@@ -1190,8 +1190,8 @@ stage('Run Ansible Provisioning (Optional)') {
 ### Post Actions
 ```groovy
 post {
-    success { echo '✅ Deployment successful!' }
-    failure  { echo '❌ Deployment failed! Check the logs.' }
+    success { echo 'DONE:  Deployment successful!' }
+    failure  { echo 'ERROR:  Deployment failed! Check the logs.' }
     // optional: email notification on failure
 }
 ```
@@ -1200,7 +1200,7 @@ post {
 
 ### 🟢 Simple English Explanation
 
-When a developer pushes code to GitHub, Jenkins automatically wakes up and runs 5 steps in order. First it **pulls the latest code**. Then it **tests the backend** — if tests fail, everything stops and nothing is deployed. Next it **builds the frontend** — if there's a JS error, again everything stops. If both pass, Jenkins **SSHs into the AWS server** and restarts the backend using PM2. The 5th step is optional — it runs Ansible only when manually triggered to set up a brand-new server. If all goes well, Jenkins prints ✅ success; if anything fails, it prints ❌ failure.
+When a developer pushes code to GitHub, Jenkins automatically wakes up and runs 5 steps in order. First it **pulls the latest code**. Then it **tests the backend** — if tests fail, everything stops and nothing is deployed. Next it **builds the frontend** — if there's a JS error, again everything stops. If both pass, Jenkins **SSHs into the AWS server** and restarts the backend using PM2. The 5th step is optional — it runs Ansible only when manually triggered to set up a brand-new server. If all goes well, Jenkins prints DONE:  success; if anything fails, it prints ERROR:  failure.
 
 ---
 
@@ -1362,4 +1362,68 @@ While the current architecture (MERN, Razorpay, Cloudinary, JWT, Jitsi, Jenkins)
 
 ---
 
+## Q16. What is AWS ElastiCache (Redis) and how is it used in this project?
+
+### What is AWS ElastiCache?
+AWS ElastiCache is a fully managed, in-memory data store and cache service. In this project, we utilize the **Redis OSS** engine to act as a high-performance cache and distributed state store.
+
+---
+
+### Key Benefits of AWS ElastiCache (Redis)
+
+| Benefit | Why it matters |
+|---------|----------------|
+| **Ultra-Low Latency** | Redis stores data in-memory, delivering data in **microseconds** (compared to milliseconds for database lookups). |
+| **Reduced Database Load** | Caches expensive MongoDB reads (like products, categories, or CMS pages) so your primary database isn't overwhelmed. |
+| **Distributed / Persistent State** | Unlike default Node.js in-memory caching, ElastiCache persists data independently. If your Express server restarts or runs in multiple instances (PM2 clustering/Load Balancers), they all share the exact same cache and rate-limiting limits. |
+| **Scalability & Managed Operations** | AWS handles patching, backups, automatic failure recovery, and scaling, letting you focus on writing code. |
+
+---
+
+### How it is Used in This Project
+
+In the backend codebase, we have integrated Redis for two main features:
+
+#### 1. Distributed Rate Limiting (`backend/server.js`)
+We use `rate-limit-redis` as the backend store for `express-rate-limit`. 
+* **Without Redis**: Rate limiting is tracked in server RAM. If you restart the server or scale to multiple instances, the count resets, allowing attackers to bypass rate limits.
+* **With Redis**: All rate limiting counts are tracked centrally in ElastiCache.
+```javascript
+const redisClient = require('./utils/redis');
+const { RedisStore } = require('rate-limit-redis');
+
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, 
+    max: 5000, 
+    standardHeaders: true,
+    legacyHeaders: false,
+    store: redisClient.isOpen ? new RedisStore({
+        sendCommand: (...args) => redisClient.sendCommand(args),
+    }) : undefined
+});
+```
+
+#### 2. Reusable Route Caching Middleware (`backend/middleware/cacheMiddleware.js`)
+We created a custom Express middleware to intercept GET requests, cache their response payloads, and serve them from Redis on subsequent requests.
+
+* **Apply Caching to Routes**:
+  ```javascript
+  const { cacheMiddleware } = require('../middleware/cacheMiddleware');
+  
+  // Cache products list for 10 minutes (600 seconds)
+  router.get('/', cacheMiddleware(600), getProducts);
+  ```
+
+* **Clear Cache on Mutating Operations (POST/PUT/DELETE)**:
+  When products or categories are modified, we invalidate the cache to ensure users see updated data:
+  ```javascript
+  const { clearCache } = require('../middleware/cacheMiddleware');
+  
+  // In your controller after updating a product:
+  await clearCache('cache:/api/products*');
+  ```
+
+---
+
 *Add more Q&A entries below as needed.*
+

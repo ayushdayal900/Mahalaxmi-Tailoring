@@ -755,10 +755,10 @@ pipeline {
 
     post {
         success {
-            echo '✅ Deployment successful!'
+            echo 'DONE:  Deployment successful!'
         }
         failure {
-            echo '❌ Deployment failed! Check the logs above.'
+            echo 'ERROR:  Deployment failed! Check the logs above.'
             // Optional: Send email notification
             // mail to: 'support@mahalaxmi-tailors.shop',
             //      subject: "Jenkins Build Failed: ${env.JOB_NAME}",
@@ -970,7 +970,7 @@ NODE_ENV=production
 
 ---
 
-## ✅ Deployment Checklist
+## DONE:  Deployment Checklist
 
 ### Core AWS Setup
 - [ ] IAM deploy user created with correct permissions

@@ -72,10 +72,10 @@ pipeline {
 
     post {
         success {
-            echo '✅ Deployment successful!'
+            echo 'DONE:  Deployment successful!'
         }
         failure {
-            echo '❌ Deployment failed! Check the logs above.'
+            echo 'ERROR:  Deployment failed! Check the logs above.'
             // Optional: Send email notification
             // mail to: 'support@mahalaxmi-tailors.shop',
             //      subject: "Jenkins Build Failed: ${env.JOB_NAME}",
